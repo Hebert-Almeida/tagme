@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conheça o TagMe!</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link rel="stylesheet" href="main.css">
+</head>
+
+
+<body>
+    <main>
+        <header></header>
+        <div class="container main--container">
+            <div class="intro--banner flex items-center justify-center flex-col gap-5">
+                <div class="presentation--text flex items-center justify-center flex-col gap-5">
+                    <div class="main--text--box flex items-center justify-center">
+                        <h1 id="main_text" class="text-7xl"></h1><span
+                            class="app--name--accent text-7xl">Me!</span>
+                    </div>
+                    <p>Para facilitar seu trabalho, o Tag<span class="app--name--accent">Me</span>
+                        classifica, resume e exporta informações do seu artigo diretamente para o Zotero.
+                    </p>
+                </div>
+                <div class="presentation--buttons flex items-center justify-center gap-5">
+                    <button class="pointer" id="tryWebBtn">Teste a versão Web</button>
+                    <button class="pointer">Obtenha a versão completa</button>
+                </div>
+            </div>
+        </div>
+        <div class="container" id="about">
+            <div class="section--title">
+                <p class="text-4xl">O que é o TagMe?</p>
+            </div>
+        </div>
+        <footer></footer>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/ScrambleTextPlugin.min.js"></script>
+    <script src="main.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', (e) => {
+            gsap.registerPlugin(ScrambleTextPlugin)
+
+            let bannerText = document.querySelector('#main_text')
+            gsap.to(bannerText, {
+                duration: 1,
+                scrambleText: {
+                    text: 'Otimize suas pesquisas com o Tag',
+                    revealDelay: 0.2,
+                    speed: 0.3,
+                    chars: 'UFTM'
+                }
+            });
+        })
+
+        document.getElementById('tryWebBtn').addEventListener('click', (e)=>{
+            window.location = "converter.html"
+        })
+    </script>
+
+</body>
+
+</html>
