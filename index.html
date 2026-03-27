@@ -12,7 +12,22 @@
 
 <body>
     <main>
-        <header>Header Placeholder</header>
+        <header class="flex items-center justify-between w-full">
+            <div class="logo basis-1/3">
+                <p class="text-xl font-bold">Tag<span class="app--name--accent">Me</span></p>
+            </div>
+            <div class="nav--container basis-1/3">
+                <nav>
+                    <ul class="flex items-center justify-between">
+                        <li><a href="#">Início</a></li>
+                        <li><a href="#about">Sobre</a></li>
+                        <li><a href="#guide">Como usar</a></li>
+                        <li><a href="#versions">Versões</a></li>
+                        <li><a href="#devs">Contato</a></li>
+                    </ul>
+                </nav>
+            </div>
+        </header>
         <div class="container" id="main--container">
             <div class="intro--banner flex items-center justify-center flex-col gap-5">
                 <div class="presentation--text flex items-center justify-center flex-col gap-5">
@@ -35,7 +50,8 @@
                 <p class="text-4xl">O que é o Tag <span class="app--name--accent">Me?</span></p>
             </div>
             <div class="section--info">
-                <p class="text-justify">Lorem ipsum dolor sit amet consectetur adipisicing elit. Sapiente, molestiae voluptatum? Quam quasi
+                <p class="text-justify">Lorem ipsum dolor sit amet consectetur adipisicing elit. Sapiente, molestiae
+                    voluptatum? Quam quasi
                     quod debitis, corporis facilis tempore adipisci perspiciatis sit necessitatibus beatae fugit id,
                     eius ad, sapiente eligendi deleniti.
                     Commodi dolores, reiciendis cum at officiis libero nulla distinctio deserunt voluptates iusto totam
@@ -50,13 +66,21 @@
             </div>
         </div>
         <div class="container" id="guide">
-            <h2>Como usar?</h2>
+            <div class="section--title">
+                <p class="text-4xl">Como usar?</p>
+            </div>
         </div>
         <div class="container" id="versions">
-            <h2>Versões</h2>
+            <div class="section--title">
+                <p class="text-4xl">Versões</p>
+            </div>
         </div>
         <div class="container" id="devs">
-            <h2>Desenvolvedores e Contato</h2>
+            <div class="section--title">
+                <p class="text-4xl">
+                    Desenvolvedores e Contato
+                </p>
+            </div>
         </div>
         <footer>Placeholder Footer</footer>
     </main>

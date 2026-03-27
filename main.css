@@ -85,3 +85,27 @@ main,
     font-style: italic;
     color: #33d333;
 }
+
+header, footer{
+    height: 60px;
+}
+
+div.logo{
+    padding-left: 1rem;
+}
+
+div.nav--container{
+    padding-right: 1rem;
+}
+
+
+div.nav--container > nav > ul > li{
+    transition: 0.1s all ease-in-out;
+    padding-right: 5px;
+}
+
+div.nav--container > nav > ul > li:hover{
+    border-right: 3px solid #33d333;
+    border-radius: 1px;
+    color: #33d333;
+}
