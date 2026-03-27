@@ -12,12 +12,12 @@
 
 <body>
     <main>
-        <header></header>
-        <div class="container main--container">
+        <header>Header Placeholder</header>
+        <div class="container" id="main--container">
             <div class="intro--banner flex items-center justify-center flex-col gap-5">
                 <div class="presentation--text flex items-center justify-center flex-col gap-5">
-                    <div class="main--text--box flex items-center justify-center">
-                        <h1 id="main_text" class="text-7xl"></h1><span
+                    <div class="main--text--box">
+                        <h1 id="main_text" class="text-7xl inline"></h1><span
                             class="app--name--accent text-7xl">Me!</span>
                     </div>
                     <p>Para facilitar seu trabalho, o Tag<span class="app--name--accent">Me</span>
@@ -30,37 +30,41 @@
                 </div>
             </div>
         </div>
-        <div class="container" id="about">
+        <div class="container gap-5" id="about">
             <div class="section--title">
-                <p class="text-4xl">O que é o TagMe?</p>
+                <p class="text-4xl">O que é o Tag <span class="app--name--accent">Me?</span></p>
+            </div>
+            <div class="section--info">
+                <p class="text-justify">Lorem ipsum dolor sit amet consectetur adipisicing elit. Sapiente, molestiae voluptatum? Quam quasi
+                    quod debitis, corporis facilis tempore adipisci perspiciatis sit necessitatibus beatae fugit id,
+                    eius ad, sapiente eligendi deleniti.
+                    Commodi dolores, reiciendis cum at officiis libero nulla distinctio deserunt voluptates iusto totam
+                    aliquam accusantium ipsam laudantium vero nisi omnis iure quae, ratione iste. Animi tempore sunt
+                    ducimus nesciunt enim?
+                    Possimus modi expedita cumque enim ratione voluptates, itaque cupiditate vitae soluta eius vel?
+                    Provident consequatur suscipit eveniet consectetur saepe, culpa nobis natus, molestias perferendis,
+                    distinctio totam voluptatum impedit consequuntur animi!
+                    Nam natus recusandae, omnis architecto cupiditate esse deleniti ut maiores repellendus sint quam
+                    modi incidunt eaque corporis suscipit soluta illum aspernatur dolorum iusto. Soluta non repellendus
+                    tenetur sequi repudiandae neque!</p>
             </div>
         </div>
-        <footer></footer>
+        <div class="container" id="guide">
+            <h2>Como usar?</h2>
+        </div>
+        <div class="container" id="versions">
+            <h2>Versões</h2>
+        </div>
+        <div class="container" id="devs">
+            <h2>Desenvolvedores e Contato</h2>
+        </div>
+        <footer>Placeholder Footer</footer>
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/ScrambleTextPlugin.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/ScrollTrigger.min.js"></script>
     <script src="main.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', (e) => {
-            gsap.registerPlugin(ScrambleTextPlugin)
-
-            let bannerText = document.querySelector('#main_text')
-            gsap.to(bannerText, {
-                duration: 1,
-                scrambleText: {
-                    text: 'Otimize suas pesquisas com o Tag',
-                    revealDelay: 0.2,
-                    speed: 0.3,
-                    chars: 'UFTM'
-                }
-            });
-        })
-
-        document.getElementById('tryWebBtn').addEventListener('click', (e)=>{
-            window.location = "converter.html"
-        })
-    </script>
 
 </body>
 
