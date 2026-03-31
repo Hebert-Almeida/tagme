@@ -4,92 +4,289 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Conheça o TagMe!</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <meta name="description" content="TagMe — geração automática de tags para artigos acadêmicos via Zotero.">
+    <!-- CSP: bloqueia inline scripts maliciosos e limita origens de recursos -->
+    <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'none';">
+    <title>TagMe</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="main.css">
 </head>
 
-
 <body>
-    <main>
-        <header class="flex items-center justify-between w-full">
-            <div class="logo basis-1/3">
-                <p class="text-xl font-bold">Tag<span class="app--name--accent">Me</span></p>
+    <div id="cursor" aria-hidden="true"></div>
+
+    <header id="hdr" role="banner">
+        <div class="logo" aria-label="TagMe">Tag<em>Me</em></div>
+        <nav class="dnav" aria-label="Navegação principal">
+            <ul role="list">
+                <li><a href="#" data-t="0" class="on" aria-current="page">Início</a></li>
+                <li><a href="#" data-t="1">Sobre</a></li>
+                <li><a href="#" data-t="2">Como usar</a></li>
+                <li><a href="#" data-t="3">Versões</a></li>
+                <li><a href="#" data-t="4">Contato</a></li>
+            </ul>
+        </nav>
+        <button id="burger" aria-label="Abrir menu" aria-expanded="false" aria-controls="mpanel">
+            <span></span><span></span><span></span>
+        </button>
+    </header>
+
+    <main id="stack" role="main" aria-live="polite">
+
+        <!-- 0 · INÍCIO -->
+        <div class="page cur" data-p="0" role="region" aria-label="Início">
+            <div class="section">
+                <span class="s-tag">Início</span>
+                <div class="s-title" id="s-title-0">
+                    <span id="scramble-target">Otimize suas pesquisas com o Tag</span><em>Me!</em>
+                </div>
+                <p class="s-body">Classifica, resume e exporta informações do seu artigo diretamente para o Zotero.
+                    Rápido, preciso e sem complicação.</p>
+                <div class="intro-btns">
+                    <!-- FIX: IDs únicos — era tryWebBtn duplicado nas páginas 0 e 3 -->
+                    <button class="s-cta" data-action="web">Teste a versão Web</button>
+                    <button class="s-cta" data-action="local">Instale a versão completa</button>
+                </div>
             </div>
-            <div class="nav--container basis-1/3">
-                <nav>
-                    <ul class="flex items-center justify-between">
-                        <li><a href="#">Início</a></li>
-                        <li><a href="#about">Sobre</a></li>
-                        <li><a href="#guide">Como usar</a></li>
-                        <li><a href="#versions">Versões</a></li>
-                        <li><a href="#devs">Contato</a></li>
-                    </ul>
-                </nav>
+        </div>
+
+        <!-- 1 · SOBRE -->
+        <div class="page" data-p="1" role="region" aria-label="Sobre">
+            <div class="section section--scroll">
+                <span class="s-tag">Sobre</span>
+                <div class="s-title">O que é o Tag<em>Me?</em></div>
+                <div class="scroll-body">
+                    <p class="s-body">Lorem ipsum dolor, sit amet consectetur adipisicing elit. Itaque tenetur, dolor
+                        non, id, facere vero ex sed officiis doloremque illo enim corrupti esse exercitationem expedita
+                        ipsum eos nisi maiores earum. Dolores culpa aperiam reprehenderit soluta, alias recusandae iusto
+                        cum sed? Sit alias tenetur, minus in minima repellat eum.</p>
+                    <p class="s-body">Lorem ipsum dolor sit, amet consectetur adipisicing elit. Est quaerat voluptate
+                        culpa, ipsa dolorum soluta necessitatibus maiores esse, et consequuntur hic saepe iste aliquid
+                        nostrum laudantium a ratione pariatur eaque? Iure itaque nihil necessitatibus provident deleniti
+                        maiores nemo maxime vitae officiis.</p>
+                    <p class="s-body">Lorem ipsum dolor, sit amet consectetur adipisicing elit. Itaque tenetur, dolor
+                        non, id, facere vero ex sed officiis doloremque illo enim corrupti esse exercitationem expedita
+                        ipsum eos nisi maiores earum.</p>
+                </div>
             </div>
-        </header>
-        <div class="container" id="main--container">
-            <div class="intro--banner flex items-center justify-center flex-col gap-5">
-                <div class="presentation--text flex items-center justify-center flex-col gap-5">
-                    <div class="main--text--box">
-                        <h1 id="main_text" class="text-7xl inline"></h1><span
-                            class="app--name--accent text-7xl">Me!</span>
+        </div>
+
+        <!-- 2 · COMO USAR -->
+        <div class="page" data-p="2" role="region" aria-label="Como usar">
+            <div class="section section--scroll">
+                <span class="s-tag">Como usar</span>
+                <div class="s-title">Simples assim</div>
+
+                <div class="how-grid">
+                    <!-- Versão Web -->
+                    <div class="how-col">
+                        <div class="how-col__header">
+                            <span class="how-col__badge">Web</span>
+                            <span class="how-col__title">Versão Web</span>
+                        </div>
+                        <ol class="how-steps" aria-label="Passos da versão web">
+                            <li class="how-step">
+                                <span class="how-step__num" aria-hidden="true">01</span>
+                                <p class="how-step__text">Lorem ipsum dolor sit amet consectetur adipisicing elit.
+                                    Reprehenderit recusandae nihil totam aliquid sit culpa blanditiis laborum animi
+                                    facilis.</p>
+                            </li>
+                            <li class="how-step">
+                                <span class="how-step__num" aria-hidden="true">02</span>
+                                <p class="how-step__text">Reprehenderit recusandae nihil totam aliquid sit culpa
+                                    blanditiis laborum animi facilis iste repudiandae deleniti esse corrupti.</p>
+                            </li>
+                            <li class="how-step">
+                                <span class="how-step__num" aria-hidden="true">03</span>
+                                <p class="how-step__text">Amet iusto odit recusandae quaerat dignissimos blanditiis
+                                    laborum animi facilis iste repudiandae.</p>
+                            </li>
+                        </ol>
+                        <div class="s-media" data-lazy="1"><span>preview versão web</span></div>
+                        <button class="s-cta how-cta" data-action="web">Experimentar agora</button>
                     </div>
-                    <p>Para facilitar seu trabalho, o Tag<span class="app--name--accent">Me</span>
-                        classifica, resume e exporta informações do seu artigo diretamente para o Zotero.
-                    </p>
-                </div>
-                <div class="presentation--buttons flex items-center justify-center gap-5">
-                    <button class="pointer" id="tryWebBtn">Teste a versão Web</button>
-                    <button class="pointer">Obtenha a versão completa</button>
-                </div>
-            </div>
-        </div>
-        <div class="container gap-5" id="about">
-            <div class="section--title">
-                <p class="text-4xl">O que é o Tag <span class="app--name--accent">Me?</span></p>
-            </div>
-            <div class="section--info">
-                <p class="text-justify">Lorem ipsum dolor sit amet consectetur adipisicing elit. Sapiente, molestiae
-                    voluptatum? Quam quasi
-                    quod debitis, corporis facilis tempore adipisci perspiciatis sit necessitatibus beatae fugit id,
-                    eius ad, sapiente eligendi deleniti.
-                    Commodi dolores, reiciendis cum at officiis libero nulla distinctio deserunt voluptates iusto totam
-                    aliquam accusantium ipsam laudantium vero nisi omnis iure quae, ratione iste. Animi tempore sunt
-                    ducimus nesciunt enim?
-                    Possimus modi expedita cumque enim ratione voluptates, itaque cupiditate vitae soluta eius vel?
-                    Provident consequatur suscipit eveniet consectetur saepe, culpa nobis natus, molestias perferendis,
-                    distinctio totam voluptatum impedit consequuntur animi!
-                    Nam natus recusandae, omnis architecto cupiditate esse deleniti ut maiores repellendus sint quam
-                    modi incidunt eaque corporis suscipit soluta illum aspernatur dolorum iusto. Soluta non repellendus
-                    tenetur sequi repudiandae neque!</p>
-            </div>
-        </div>
-        <div class="container" id="guide">
-            <div class="section--title">
-                <p class="text-4xl">Como usar?</p>
-            </div>
-        </div>
-        <div class="container" id="versions">
-            <div class="section--title">
-                <p class="text-4xl">Versões</p>
-            </div>
-        </div>
-        <div class="container" id="devs">
-            <div class="section--title">
-                <p class="text-4xl">
-                    Desenvolvedores e Contato
-                </p>
-            </div>
-        </div>
-        <footer>Placeholder Footer</footer>
-    </main>
 
-    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/ScrambleTextPlugin.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/ScrollTrigger.min.js"></script>
-    <script src="main.js"></script>
+                    <div class="how-divider" aria-hidden="true"></div>
 
+                    <!-- Versão Local -->
+                    <div class="how-col">
+                        <div class="how-col__header">
+                            <span class="how-col__badge how-col__badge--local">Local</span>
+                            <span class="how-col__title">Versão Local</span>
+                        </div>
+                        <ol class="how-steps" aria-label="Passos da versão local">
+                            <li class="how-step">
+                                <span class="how-step__num" aria-hidden="true">01</span>
+                                <p class="how-step__text">Lorem ipsum dolor sit amet consectetur adipisicing elit.
+                                    Reprehenderit recusandae nihil totam aliquid sit.</p>
+                            </li>
+                            <li class="how-step">
+                                <span class="how-step__num" aria-hidden="true">02</span>
+                                <p class="how-step__text">Reprehenderit recusandae nihil totam aliquid sit culpa
+                                    blanditiis laborum animi facilis iste repudiandae.</p>
+                            </li>
+                            <li class="how-step">
+                                <span class="how-step__num" aria-hidden="true">03</span>
+                                <p class="how-step__text">Amet iusto odit recusandae quaerat dignissimos blanditiis
+                                    laborum.</p>
+                            </li>
+                        </ol>
+                        <div class="s-media" data-lazy="1"><span>preview versão local</span></div>
+                        <button class="s-cta how-cta" data-action="local">Baixar instalador</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3 · VERSÕES -->
+        <div class="page" data-p="3" role="region" aria-label="Versões">
+            <div class="section section--scroll">
+                <span class="s-tag">Versões</span>
+                <div class="s-title">Web & Instalável</div>
+
+                <div class="versions-grid">
+                    <div class="version-card">
+                        <div class="version-card__icon" aria-hidden="true">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                        </div>
+                        <h3 class="version-card__name">Web</h3>
+                        <p class="version-card__desc">Acesse pelo navegador sem instalar nada. Ideal para uso rápido.</p>
+                        <ul class="version-card__features" aria-label="Funcionalidades versão web">
+                            <li>Sem instalação</li>
+                            <li>Sempre atualizado</li>
+                            <li>Exportação para Zotero</li>
+                            <li>Processamento via DOI</li>
+                        </ul>
+                        <button class="s-cta" data-action="web">Acessar versão Web</button>
+                    </div>
+
+                    <div class="version-card version-card--featured">
+                        <div class="version-card__badge">Recomendado</div>
+                        <div class="version-card__icon" aria-hidden="true">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+                        </div>
+                        <h3 class="version-card__name">Desktop</h3>
+                        <p class="version-card__desc">Instale e use offline com funcionalidades avançadas de integração.</p>
+                        <ul class="version-card__features" aria-label="Funcionalidades versão desktop">
+                            <li>Uso offline</li>
+                            <li>Processamento de PDF</li>
+                            <li>Integração nativa Zotero</li>
+                            <li>Cache local de metadados</li>
+                            <li>Privacidade total</li>
+                        </ul>
+                        <button class="s-cta" data-action="local">Baixar para Desktop</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4 · CONTATO -->
+        <div class="page" data-p="4" role="region" aria-label="Contato">
+            <div class="section section--scroll">
+                <span class="s-tag">Contato</span>
+                <div class="s-title">Desenvolvedores</div>
+                <p class="s-body">Projeto desenvolvido por estudantes da UFTM. Dúvidas, sugestões ou bugs?
+                    Entre em contato com a equipe.</p>
+
+                <div class="devs-grid">
+                    <article class="dev-card" aria-label="Desenvolvedor 1">
+                        <div class="dev-card__avatar" aria-hidden="true">
+                            <!-- img real: substitua src e alt -->
+                            <img src="" alt="" class="dev-card__photo" loading="lazy" width="80" height="80">
+                            <span class="dev-card__initials">AB</span>
+                        </div>
+                        <div class="dev-card__body">
+                            <h3 class="dev-card__name">Nome do Dev</h3>
+                            <p class="dev-card__role">Full-stack · UFTM</p>
+                            <p class="dev-card__bio">Lorem ipsum dolor sit amet consectetur adipisicing elit.
+                                Aperiam exercitationem, neque temporibus dignissimos beatae repellat eligendi.</p>
+                            <div class="dev-card__socials" role="list" aria-label="Redes sociais">
+                                <a href="#" class="dev-social" role="listitem" aria-label="GitHub" rel="noopener noreferrer" target="_blank">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844a9.59 9.59 0 0 1 2.504.337c1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.02 10.02 0 0 0 22 12.017C22 6.484 17.522 2 12 2z"/></svg>
+                                    GitHub
+                                </a>
+                                <a href="#" class="dev-social" role="listitem" aria-label="LinkedIn" rel="noopener noreferrer" target="_blank">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6zM2 9h4v12H2z"/><circle cx="4" cy="4" r="2"/></svg>
+                                    LinkedIn
+                                </a>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article class="dev-card" aria-label="Desenvolvedor 2">
+                        <div class="dev-card__avatar" aria-hidden="true">
+                            <img src="" alt="" class="dev-card__photo" loading="lazy" width="80" height="80">
+                            <span class="dev-card__initials">CD</span>
+                        </div>
+                        <div class="dev-card__body">
+                            <h3 class="dev-card__name">Nome do Dev</h3>
+                            <p class="dev-card__role">Backend · UFTM</p>
+                            <p class="dev-card__bio">Lorem ipsum dolor sit amet consectetur adipisicing elit.
+                                Cupiditate, quidem earum quod deleniti recusandae facilis facere porro.</p>
+                            <div class="dev-card__socials" role="list" aria-label="Redes sociais">
+                                <a href="#" class="dev-social" role="listitem" aria-label="GitHub" rel="noopener noreferrer" target="_blank">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844a9.59 9.59 0 0 1 2.504.337c1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.02 10.02 0 0 0 22 12.017C22 6.484 17.522 2 12 2z"/></svg>
+                                    GitHub
+                                </a>
+                                <a href="#" class="dev-social" role="listitem" aria-label="LinkedIn" rel="noopener noreferrer" target="_blank">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6zM2 9h4v12H2z"/><circle cx="4" cy="4" r="2"/></svg>
+                                    LinkedIn
+                                </a>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article class="dev-card" aria-label="Desenvolvedor 3">
+                        <div class="dev-card__avatar" aria-hidden="true">
+                            <img src="" alt="" class="dev-card__photo" loading="lazy" width="80" height="80">
+                            <span class="dev-card__initials">EF</span>
+                        </div>
+                        <div class="dev-card__body">
+                            <h3 class="dev-card__name">Nome do Dev</h3>
+                            <p class="dev-card__role">Design · UFTM</p>
+                            <p class="dev-card__bio">Lorem ipsum dolor sit amet consectetur adipisicing elit.
+                                Blanditiis ratione minima saepe est ut aspernatur quasi fugit nobis.</p>
+                            <div class="dev-card__socials" role="list" aria-label="Redes sociais">
+                                <a href="#" class="dev-social" role="listitem" aria-label="GitHub" rel="noopener noreferrer" target="_blank">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844a9.59 9.59 0 0 1 2.504.337c1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.02 10.02 0 0 0 22 12.017C22 6.484 17.522 2 12 2z"/></svg>
+                                    GitHub
+                                </a>
+                                <a href="#" class="dev-social" role="listitem" aria-label="LinkedIn" rel="noopener noreferrer" target="_blank">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6zM2 9h4v12H2z"/><circle cx="4" cy="4" r="2"/></svg>
+                                    LinkedIn
+                                </a>
+                            </div>
+                        </div>
+                    </article>
+                </div>
+            </div>
+        </div>
+
+    </main><!-- /#stack -->
+
+    <div id="dots" role="tablist" aria-label="Navegação por seções"></div>
+    <div id="ctr" aria-live="polite" aria-atomic="true">01 / 05</div>
+
+    <div id="mbg" aria-hidden="true"></div>
+    <div id="mpanel" role="dialog" aria-label="Menu de navegação" aria-modal="true">
+        <button id="mx" aria-label="Fechar menu">✕</button>
+        <nav aria-label="Navegação mobile">
+            <ul role="list">
+                <li><a href="#" data-t="0" class="on" aria-current="page">Início</a></li>
+                <li><a href="#" data-t="1">Sobre</a></li>
+                <li><a href="#" data-t="2">Como usar</a></li>
+                <li><a href="#" data-t="3">Versões</a></li>
+                <li><a href="#" data-t="4">Contato</a></li>
+            </ul>
+        </nav>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/ScrambleTextPlugin.min.js" defer></script>
+    <script src="main.js" defer></script>
 </body>
 
 </html>
