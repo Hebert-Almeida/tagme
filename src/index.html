@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="ZoteroTagr — analise artigos acadêmicos e exporte tags e resumos para o Zotero automaticamente.">
+    <!-- SECURITY: CSP bloqueia scripts inline, restringe origens de conexão -->
+    <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self';
+                 script-src 'self' https://cdn.jsdelivr.net https://js.puter.com 'sha256-ZswfTY7H35rbv8WC7NXBoiC7WNu86vSzCDChNWwZZDM=' 'sha256-vvt4KWwuNr51XfE5m+hzeNEGhiOfZzG97ccfqGsPwvE=';
+                 style-src 'self' https://fonts.googleapis.com;
+                 font-src https://fonts.gstatic.com;
+                 img-src 'self' data: https:;
+                 worker-src https://cdn.jsdelivr.net;
+                 connect-src https://api.zotero.org https://api.crossref.org https://*.puter.com;">
+    <title>TagMe</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/animations.css">
+</head>
+
+<body>
+    <div id="cursor" aria-hidden="true"></div>
+
+    <header id="app-header" role="banner">
+        <a href="../index.html" class="logo" aria-label="TagMe — Voltar ao início">Tag<em>Me</em></a>
+        <ol id="step-trail" class="step-trail" aria-label="Progresso da tarefa"></ol>
+        <button id="btn-back" class="btn-ghost btn-back" aria-label="Passo anterior" hidden>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+            Voltar
+        </button>
+    </header>
+
+    <main id="app-main" role="main">
+
+        <!-- ── VIEW 0: CONNECT ── -->
+        <section class="view" id="view-connect" data-view="connect" role="region" aria-label="Conectar ao Zotero">
+            <div class="view-inner">
+                <span class="s-tag">Passo 1 de 5</span>
+                <h1 class="s-title">Conecte sua biblioteca <em>Zotero</em></h1>
+                <p class="s-body">Cole sua chave de API do Zotero e seu User ID para acessarmos sua biblioteca.
+                    Suas credenciais ficam apenas na memória e são apagadas ao fechar a aba.</p>
+
+                <form id="form-connect" class="connect-form" novalidate aria-label="Formulário de conexão ao Zotero">
+                    <div class="field-group">
+                        <label for="inp-apikey" class="field-label">
+                            Chave de API (API Key)
+                            <span class="field-required" aria-label="campo obrigatório">*</span>
+                        </label>
+                        <input type="password" id="inp-apikey" name="apikey"
+                            placeholder="Cole sua chave aqui (ex: aBcDeFgHiJkLmNoP…)"
+                            autocomplete="off" autocorrect="off" spellcheck="false"
+                            aria-required="true" aria-describedby="apikey-hint apikey-err">
+                        <p id="apikey-hint" class="field-hint">
+                            Não tem uma chave?
+                            <a href="https://www.zotero.org/settings/keys/new" target="_blank" rel="noopener noreferrer" class="hint-link">
+                                Crie sua chave de API no Zotero
+                            </a>
+                            — marque <strong>Read/Write</strong> nas permissões de biblioteca.
+                        </p>
+                        <p id="apikey-err" class="field-error" role="alert" hidden></p>
+                    </div>
+
+                    <div class="field-group">
+                        <label for="inp-userid" class="field-label">
+                            User ID
+                            <span class="field-required" aria-label="campo obrigatório">*</span>
+                        </label>
+                        <input type="text" id="inp-userid" name="userid"
+                            placeholder="Seu ID numérico (ex: 1234567)"
+                            autocomplete="off" inputmode="numeric" pattern="[0-9]+"
+                            aria-required="true" aria-describedby="userid-hint userid-err">
+                        <p id="userid-hint" class="field-hint">
+                            Seu ID aparece na
+                            <a href="https://www.zotero.org/settings/keys" target="_blank" rel="noopener noreferrer" class="hint-link">
+                                página de Chaves de API do Zotero
+                            </a>
+                            , logo acima da lista de chaves.
+                        </p>
+                        <p id="userid-err" class="field-error" role="alert" hidden></p>
+                    </div>
+
+                    <p id="connect-err" class="inline-error" role="alert" hidden></p>
+
+                    <button type="submit" id="btn-connect" class="s-cta s-cta--full">
+                        Conectar biblioteca
+                    </button>
+                </form>
+            </div>
+        </section>
+
+        <!-- ── VIEW 1: LIBRARY ── -->
+        <section class="view" id="view-library" data-view="library" role="region" aria-label="Biblioteca Zotero" hidden>
+            <div class="view-inner view-inner--wide">
+                <span class="s-tag">Passo 2 de 5</span>
+                <h2 class="s-title">Escolha um <em>artigo</em></h2>
+
+                <div class="library-toolbar">
+                    <label for="inp-search" class="sr-only">Buscar artigos</label>
+                    <div class="search-wrap">
+                        <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+                        </svg>
+                        <input type="search" id="inp-search"
+                            placeholder="Buscar por título, autor ou ano…"
+                            autocomplete="off">
+                    </div>
+                    <label for="sel-collection" class="sr-only">Filtrar por coleção</label>
+                    <select id="sel-collection" aria-label="Filtrar por coleção">
+                        <option value="">Todas as coleções</option>
+                    </select>
+                    <span id="library-count" class="library-count" aria-live="polite" aria-atomic="true"></span>
+                </div>
+
+                <div id="articles-container" class="articles-container"
+                    role="list" aria-label="Lista de artigos" aria-live="polite"></div>
+
+                <nav id="pagination-nav" class="pagination-nav" aria-label="Paginação de artigos" hidden></nav>
+            </div>
+        </section>
+
+        <!-- ── VIEW 2: ARTICLE ── -->
+        <section class="view" id="view-article" data-view="article" role="region" aria-label="Análise do artigo" hidden>
+            <div class="view-inner view-inner--wide">
+                <span class="s-tag">Passo 3 de 5</span>
+                <h2 class="s-title">Analisar <em>artigo</em></h2>
+
+                <div id="article-detail" class="article-detail"
+                    aria-label="Detalhes do artigo selecionado"></div>
+
+                <div class="source-panel">
+                    <h3 class="panel-heading">Fonte de análise</h3>
+                    <p class="panel-hint">Escolha como obter o texto para gerar tags e resumo.</p>
+
+                    <div class="source-btns" role="group" aria-label="Opções de fonte de texto">
+                        <button id="btn-doi" class="source-btn" aria-describedby="doi-hint">
+                            <span class="source-btn__icon" aria-hidden="true">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                                    stroke="currentColor" stroke-width="1.8">
+                                    <circle cx="11" cy="11" r="8"/>
+                                    <path d="m21 21-4.35-4.35"/>
+                                </svg>
+                            </span>
+                            <span class="source-btn__label">Abstract via DOI</span>
+                            <span class="source-btn__desc" id="doi-hint">
+                                Busca o abstract automaticamente
+                            </span>
+                        </button>
+                        <button id="btn-manual" class="source-btn" aria-describedby="manual-hint">
+                            <span class="source-btn__icon" aria-hidden="true">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                                    stroke="currentColor" stroke-width="1.8">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                </svg>
+                            </span>
+                            <span class="source-btn__label">Inserir texto</span>
+                            <span class="source-btn__desc" id="manual-hint">
+                                Cole o abstract ou trecho aqui
+                            </span>
+                        </button>
+                        <button id="btn-pdf" class="source-btn" aria-describedby="pdf-hint">
+                            <span class="source-btn__icon" aria-hidden="true">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                                    stroke="currentColor" stroke-width="1.8">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                    <polyline points="14 2 14 8 20 8"/>
+                                    <line x1="9" y1="13" x2="15" y2="13"/>
+                                    <line x1="9" y1="17" x2="12" y2="17"/>
+                                </svg>
+                            </span>
+                            <span class="source-btn__label">Carregar PDF</span>
+                            <span class="source-btn__desc" id="pdf-hint">
+                                Extrai o texto do arquivo PDF
+                            </span>
+                        </button>
+                    </div>
+                    <!-- Hidden file input triggered by the PDF button -->
+                    <input type="file" id="inp-pdf" accept=".pdf" hidden
+                        aria-label="Selecionar arquivo PDF para extração de texto">
+
+                    <div id="manual-input-area" class="manual-input-area" hidden>
+                        <label for="inp-article-text" class="field-label">Texto do artigo</label>
+                        <textarea id="inp-article-text" class="article-textarea"
+                            placeholder="Cole aqui o abstract, introdução ou qualquer trecho relevante do artigo (mínimo 100 caracteres)…"
+                            aria-required="true" rows="8"
+                            aria-describedby="char-counter-label"></textarea>
+                        <p id="char-counter-label" class="char-counter">
+                            <span id="char-count">0</span> caracteres
+                            <span class="char-min">(mínimo 100)</span>
+                        </p>
+                    </div>
+
+                    <div id="text-preview-area" class="text-preview-area" hidden>
+                        <p id="preview-label" class="preview-label">Texto obtido:</p>
+                        <div id="text-preview-content" class="text-preview-content"
+                            role="region" aria-label="Prévia do texto extraído"></div>
+                        <button id="btn-edit-text" class="btn-ghost btn-sm">
+                            Editar texto manualmente
+                        </button>
+                    </div>
+
+                    <p id="article-err" class="inline-error" role="alert" hidden></p>
+
+                    <button id="btn-analyze" class="s-cta s-cta--full" hidden>
+                        Analisar e gerar tags
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ── VIEW 3: TAGS ── -->
+        <section class="view" id="view-tags" data-view="tags" role="region" aria-label="Seleção de tags" hidden>
+            <div class="view-inner view-inner--wide">
+                <span class="s-tag">Passo 4 de 5</span>
+                <h2 class="s-title">Selecione as <em>tags</em></h2>
+                <p class="s-body">
+                    Tags organizadas por categoria. Selecione blocos inteiros ou tags individuais.
+                    Use "Selecionar tudo" para marcar um bloco de uma vez.
+                </p>
+
+                <div id="theme-display" class="theme-display" role="note" aria-live="polite"></div>
+
+                <div id="tag-blocks" class="tag-blocks"
+                    role="group" aria-label="Grupos de tags sugeridas"></div>
+
+                <div class="tag-preview-panel">
+                    <p class="panel-heading">
+                        Tags selecionadas
+                        <span id="selected-count" class="badge" aria-live="polite" aria-atomic="true">0</span>
+                    </p>
+                    <div id="selected-tags-preview" class="selected-tags-preview"
+                        role="list" aria-label="Tags atualmente selecionadas"
+                        aria-live="polite"></div>
+                </div>
+
+                <p id="tags-err" class="inline-error" role="alert" hidden></p>
+
+                <button id="btn-to-summary" class="s-cta s-cta--full">
+                    Gerar resumo e continuar →
+                </button>
+            </div>
+        </section>
+
+        <!-- ── VIEW 4: SUMMARY ── -->
+        <section class="view" id="view-summary" data-view="summary" role="region" aria-label="Resumo gerado" hidden>
+            <div class="view-inner">
+                <span class="s-tag">Passo 5 de 5</span>
+                <h2 class="s-title">Resumo <em>gerado</em></h2>
+                <p class="s-body">
+                    Resumo em linguagem simples pronto para ser salvo no campo Extra do Zotero.
+                    Você pode editá-lo antes de exportar.
+                </p>
+
+                <div id="summary-content" class="summary-content"
+                    role="region" aria-label="Resumo do artigo" aria-live="polite"></div>
+
+                <p id="summary-err" class="inline-error" role="alert" hidden></p>
+
+                <div class="summary-actions">
+                    <button id="btn-export" class="s-cta">
+                        Exportar para Zotero
+                    </button>
+                    <button id="btn-skip-summary" class="btn-ghost">
+                        Exportar sem resumo
+                    </button>
+                </div>
+            </div>
+        </section>
+
+    </main><!-- /#app-main -->
+
+    <!-- ── EXPORT MODAL (injected by exportModal.js) ── -->
+    <div id="modal-slot" role="dialog" aria-modal="true" aria-label="Confirmação de exportação" hidden></div>
+
+    <!-- ── TOAST NOTIFICATIONS ── -->
+    <div id="toast-container" class="toast-container"
+        role="status" aria-live="polite" aria-atomic="false"></div>
+
+    <!-- ── RATE LIMIT WARNING ── -->
+    <div id="rate-warning" class="rate-warning"
+        role="alert" aria-live="assertive" hidden>
+        Muitas requisições em pouco tempo. Aguarde um momento antes de tentar novamente.
+    </div>
+
+    <!-- PDF.js — client-side PDF text extraction -->
+    <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+    <!-- GSAP + DOMPurify via CDN — loaded before module script -->
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/ScrambleTextPlugin.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+    <!-- Puter.js — AI analysis (auto-handles auth with free Puter account) -->
+    <script src="https://js.puter.com/v2/"></script>
+    <!-- Entry point — ES module, deferred automatically -->
+    <script type="module" src="js/app.js"></script>
+</body>
+
+</html>

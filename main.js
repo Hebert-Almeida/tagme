@@ -140,7 +140,7 @@ function setActive(i) {
     });
 
     /* will-change só na ativa */
-    pages.forEach((p, j) => {
+    pages.forEach(p => {
         p.classList.remove('cur');
         p.style.willChange = 'auto';
     });
@@ -256,7 +256,7 @@ document.querySelectorAll('[data-action]').forEach(btn => {
     btn.addEventListener('click', () => {
         const action = btn.dataset.action;
         /* FIX: sanitiza o valor antes de usar — previne open redirect */
-        if (action === 'web')   window.location.href = 'converter.html';
+        if (action === 'web')   window.location.href = 'src/index.html';
         else if (action === 'local') window.location.href = 'installer.html';
     });
 });
