@@ -3,12 +3,12 @@
 // ── Imports ───────────────────────────────────────────────────────────────
 import { ZoteroClient }       from './zotero.js';
 import { fetchDOIMetadata }   from './doi.js';
-import { extractPDFText }     from './pdf.js';
-import { generateAnalysis }   from './ai.js';
+import { renderPDFPages }     from './pdf.js';
+import { generateAnalysis, generateAnalysisFromImages } from './ai.js';
 import { validateApiKey, validateUserId, sanitizeText } from './security.js';
 import {
     initCursor, bindCursorTargets, showToast, showInlineError, hideInlineError,
-    setLoading, transitionViews, updateStepTrail, debounce,
+    setLoading, transitionViews, updateStepTrail, debounce, initTheme,
 } from './ui.js';
 import { ArticleList }   from '../components/articleList.js';
 import { TagSelector }   from '../components/tagSelector.js';
@@ -31,7 +31,8 @@ const state = {
     },
     article: null,          // selected Zotero item | null
     doiMeta: null,          // CrossRef metadata | null
-    extractedText: '',      // text to analyze
+    extractedText: '',      // text to analyze (DOI or manual)
+    pdfImages: null,        // string[] | null — rendered PDF page images for vision
     analysis: null,         // { tagBlocks, theme, summary } | null
     selectedTags: [],       // string[]
     includeSummary: true,
@@ -364,6 +365,7 @@ function setupArticleView() {
 function handleArticleSelect(item) {
     state.article      = item;
     state.extractedText = '';
+    state.pdfImages     = null;
     state.doiMeta       = null;
 
     // Reset article view state
@@ -486,22 +488,54 @@ async function handlePDFLoad() {
     el.btnAnalyze.hidden = true;
     hideInlineError(el.articleErr);
 
-    setLoading(el.btnPdf, true, 'Extraindo…');
+    setLoading(el.btnPdf, true, 'Renderizando…');
 
     try {
-        const text = await extractPDFText(file);
-        state.extractedText = text;
+        const images = await renderPDFPages(file);
+        state.pdfImages    = images;
+        state.extractedText = ''; // not used for vision flow
 
-        _showTextPreview(text, `PDF: ${sanitizeText(file.name)}`);
-        showToast('Texto extraído com sucesso!', 'success');
+        _showPDFPreview(images[0], sanitizeText(file.name), images.length);
+        showToast('PDF pronto — a IA vai ler as páginas diretamente!', 'success');
     } catch (err) {
         showInlineError(el.articleErr, err.message);
         el.btnPdf.classList.remove('active');
-        // Reset so the same file can be re-selected after fixing the issue
         el.inpPdf.value = '';
     } finally {
         setLoading(el.btnPdf, false);
     }
+}
+
+function _showPDFPreview(firstPageDataUrl, fileName, totalPages) {
+    // Reuse the text-preview-area element but show an image + info instead
+    el.previewLabel.textContent = 'PDF carregado:';
+
+    el.textPreviewContent.innerHTML = '';
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'pdf-preview-area';
+
+    const img = document.createElement('img');
+    img.src = firstPageDataUrl;
+    img.alt = `Primeira página de ${fileName}`;
+    img.className = 'pdf-preview-img';
+    wrapper.appendChild(img);
+
+    const info = document.createElement('p');
+    info.className = 'pdf-preview-info';
+    info.innerHTML =
+        `<strong>${fileName}</strong> &mdash; ` +
+        `${totalPages} página${totalPages !== 1 ? 's' : ''} serão analisadas pela IA por visão.`;
+    wrapper.appendChild(info);
+
+    el.textPreviewContent.appendChild(wrapper);
+    el.textPreviewArea.hidden = false;
+    el.btnAnalyze.hidden = false;
+
+    gsap.fromTo([el.textPreviewArea, el.btnAnalyze],
+        { opacity: 0, y: 10 },
+        { opacity: 1, y: 0, duration: 0.35, ease: 'power3.out', stagger: 0.06 }
+    );
 }
 
 function handleManualInput() {
@@ -519,6 +553,10 @@ function handleManualInput() {
 }
 
 function handleEditText() {
+    // Switching to manual text — discard any loaded PDF images
+    state.pdfImages = null;
+    el.btnPdf.classList.remove('active');
+
     el.textPreviewArea.hidden = true;
     el.manualInputArea.hidden = false;
     el.inpArticleText.value = state.extractedText;
@@ -541,21 +579,29 @@ function _showTextPreview(text, label = 'Texto obtido:') {
 }
 
 async function handleAnalyze() {
-    const text = el.inpArticleText.value.trim() || state.extractedText;
-
-    if (!text || text.length < 80) {
-        showInlineError(el.articleErr, 'Texto muito curto. Insira pelo menos 80 caracteres.');
-        return;
-    }
-
     hideInlineError(el.articleErr);
     setLoading(el.btnAnalyze, true, 'Analisando com IA…');
 
     try {
-        const analysis = await generateAnalysis(text);
-        state.analysis = analysis;
-        state.extractedText = text;
+        let analysis;
 
+        if (state.pdfImages?.length > 0) {
+            // Vision flow: AI reads PDF pages directly as images
+            const meta = _buildArticleMeta(state.article);
+            analysis = await generateAnalysisFromImages(state.pdfImages, meta);
+        } else {
+            // Text flow: DOI abstract or manual paste
+            const text = el.inpArticleText.value.trim() || state.extractedText;
+            if (!text || text.length < 80) {
+                setLoading(el.btnAnalyze, false);
+                showInlineError(el.articleErr, 'Texto muito curto. Insira pelo menos 80 caracteres.');
+                return;
+            }
+            state.extractedText = text;
+            analysis = await generateAnalysis(text);
+        }
+
+        state.analysis = analysis;
         showToast('Análise concluída!', 'success');
         navigateTo('tags');
         _renderTagsView(analysis);
@@ -564,6 +610,17 @@ async function handleAnalyze() {
     } finally {
         setLoading(el.btnAnalyze, false);
     }
+}
+
+function _buildArticleMeta(item) {
+    if (!item?.data) return '';
+    const d = item.data;
+    const parts = [];
+    if (d.title) parts.push(`Title: ${sanitizeText(d.title)}`);
+    if (d.creators?.length) parts.push(`Authors: ${_formatAuthors(d.creators)}`);
+    if (d.date) parts.push(`Year: ${new Date(String(d.date)).getFullYear()}`);
+    if (d.publicationTitle) parts.push(`Journal: ${sanitizeText(d.publicationTitle)}`);
+    return parts.join('; ');
 }
 
 // ── STEP 4: TAG SELECTION ─────────────────────────────────────────────────
@@ -681,6 +738,9 @@ function init() {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
         gsap.globalTimeline.timeScale(20);
     }
+
+    // Init day/night theme (reads localStorage or system preference)
+    initTheme();
 
     // Init custom cursor
     initCursor();

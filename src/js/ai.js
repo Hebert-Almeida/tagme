@@ -1,15 +1,15 @@
 'use strict';
 
-// SECURITY: No eval(). Input is truncated before sending to the AI.
+// SECURITY: No eval(). Input is truncated/capped before sending to the AI.
 // Every string in the AI response is sanitized and length-capped.
 // Requests race against a hard timeout to prevent hanging.
 
-const MAX_INPUT_CHARS = 4_000;  // ~1 000 tokens — more than enough for an abstract
-const AI_TIMEOUT_MS   = 45_000; // 45 s — generous for cold Puter starts
-const AI_MODEL        = 'gpt-4o-mini'; // fast, cheap, accurate enough
+const MAX_INPUT_CHARS = 4_000;  // ~1 000 tokens — enough for an abstract
+const AI_TIMEOUT_MS   = 60_000; // 60 s — generous for vision + cold Puter starts
+const AI_MODEL        = 'gpt-4o-mini'; // supports both text and vision
 
 // ── Session cache ─────────────────────────────────────────────────────────
-// Avoids calling the AI twice for the same text within one browser session.
+// Avoids calling the AI twice for the same input within one browser session.
 const _cache = new Map();
 
 function _hashText(text) {
@@ -20,10 +20,9 @@ function _hashText(text) {
     return h;
 }
 
-// ── Prompt ────────────────────────────────────────────────────────────────
-function _buildMessages(text) {
-    const system = `You are an academic research assistant specialized in bibliographic metadata.
-Analyse the provided article text and return ONLY a valid JSON object — no markdown, no explanation, no code fences.
+// ── Shared system prompt ──────────────────────────────────────────────────
+const SYSTEM_PROMPT = `You are an academic research assistant specialized in bibliographic metadata.
+Analyse the provided article content and return ONLY a valid JSON object — no markdown, no explanation, no code fences.
 
 Required schema:
 {
@@ -44,9 +43,34 @@ Rules:
 - summary: plain prose only — no bullet points, no markdown, no asterisks.
 - Return ONLY the JSON object. Absolutely nothing else.`;
 
+// ── Text-based analysis ───────────────────────────────────────────────────
+function _buildTextMessages(text) {
     return [
-        { role: 'system', content: system },
+        { role: 'system', content: SYSTEM_PROMPT },
         { role: 'user',   content: `Article text:\n\n${text}` },
+    ];
+}
+
+// ── Vision-based analysis (PDF pages as images) ───────────────────────────
+function _buildVisionMessages(imageDataUrls, articleMeta) {
+    const metaNote = articleMeta
+        ? `\n\nArticle metadata hint: ${articleMeta}`
+        : '';
+
+    const userContent = [
+        {
+            type: 'text',
+            text: `These are page images from an academic article PDF. Read them carefully and generate structured tags and a summary.${metaNote}`,
+        },
+        ...imageDataUrls.map(url => ({
+            type: 'image_url',
+            image_url: { url, detail: 'auto' },
+        })),
+    ];
+
+    return [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user',   content: userContent },
     ];
 }
 
@@ -69,7 +93,6 @@ function _parseResponse(raw) {
         throw new Error('Resposta da IA inesperada. Tente novamente.');
     }
 
-    // Validate & sanitize tagBlocks
     if (!Array.isArray(parsed.tagBlocks) || parsed.tagBlocks.length === 0) {
         throw new Error('A IA não retornou tags. Tente novamente.');
     }
@@ -96,7 +119,6 @@ function _parseResponse(raw) {
     return { tagBlocks, theme, summary };
 }
 
-// Remove null bytes and control characters; collapse whitespace
 function _sanitizeStr(str) {
     return str
         .replace(/[\u0000-\u001F\u007F]/g, ' ')
@@ -104,30 +126,14 @@ function _sanitizeStr(str) {
         .trim();
 }
 
-// ── Main export ───────────────────────────────────────────────────────────
-export async function generateAnalysis(text) {
-    if (!text || typeof text !== 'string') {
-        throw new Error('Texto inválido para análise.');
-    }
-    if (text.trim().length < 80) {
-        throw new Error('Texto muito curto (mínimo 80 caracteres).');
-    }
-
-    // SECURITY: cap input before it leaves the browser
-    const safeText = text.trim().slice(0, MAX_INPUT_CHARS);
-
-    // Return cached result for identical text in the same session
-    const cacheKey = _hashText(safeText);
+// ── Shared runner ─────────────────────────────────────────────────────────
+async function _runChat(messages, cacheKey) {
     if (_cache.has(cacheKey)) return _cache.get(cacheKey);
 
-    // Puter.js is loaded as a global <script> before this module
     if (typeof puter === 'undefined') {
         throw new Error('Serviço de IA não carregado. Recarregue a página.');
     }
 
-    const messages = _buildMessages(safeText);
-
-    // SECURITY: hard timeout so a stalled request never blocks the UI forever
     let timeoutId;
     const timeoutPromise = new Promise((_, reject) => {
         timeoutId = setTimeout(
@@ -144,7 +150,6 @@ export async function generateAnalysis(text) {
         ]);
         clearTimeout(timeoutId);
 
-        // Puter returns { message: { content: string } } — handle variants defensively
         raw = response?.message?.content
             ?? response?.content
             ?? String(response ?? '');
@@ -165,4 +170,34 @@ export async function generateAnalysis(text) {
     const result = _parseResponse(raw);
     _cache.set(cacheKey, result);
     return result;
+}
+
+// ── Public: text-based analysis ───────────────────────────────────────────
+export async function generateAnalysis(text) {
+    if (!text || typeof text !== 'string') {
+        throw new Error('Texto inválido para análise.');
+    }
+    if (text.trim().length < 80) {
+        throw new Error('Texto muito curto (mínimo 80 caracteres).');
+    }
+
+    const safeText = text.trim().slice(0, MAX_INPUT_CHARS);
+    const messages = _buildTextMessages(safeText);
+    return _runChat(messages, _hashText(safeText));
+}
+
+// ── Public: vision-based analysis (PDF pages) ────────────────────────────
+/**
+ * @param {string[]} imageDataUrls  array of data:image/jpeg;base64,... strings
+ * @param {string}   [articleMeta]  optional title/author hint for the AI
+ */
+export async function generateAnalysisFromImages(imageDataUrls, articleMeta = '') {
+    if (!Array.isArray(imageDataUrls) || imageDataUrls.length === 0) {
+        throw new Error('Nenhuma imagem de PDF fornecida.');
+    }
+
+    const messages = _buildVisionMessages(imageDataUrls, articleMeta);
+    // Cache key based on first image length (fast, sufficient uniqueness)
+    const cacheKey = _hashText(imageDataUrls[0].slice(0, 500));
+    return _runChat(messages, cacheKey);
 }

@@ -47,7 +47,18 @@ export class ZoteroClient {
 
     async #get(path) {
         this.#checkRate();
-        const res = await fetch(`${ZOTERO_BASE}${path}`, { headers: this.#headers() });
+        let res;
+        try {
+            res = await fetch(`${ZOTERO_BASE}${path}`, {
+                headers: this.#headers(),
+                mode: 'cors',
+            });
+        } catch {
+            throw new Error(
+                'Não foi possível contactar a API do Zotero. ' +
+                'Verifique sua conexão com a internet.'
+            );
+        }
         return res;
     }
 
@@ -151,36 +162,30 @@ export class ZoteroClient {
         }
         data.tags = merged;
 
-        // ── Add summary ───────────────────────────────────────────────────
-        if (summary) {
-            const prefix = '[ZoteroTagr Summary]\n';
-            const existing = data.extra || '';
-            // Don't duplicate if already written by this tool
-            if (!existing.includes('[ZoteroTagr Summary]')) {
-                // SECURITY: sanitize summary text before writing
-                const cleanSummary = String(summary)
-                    .replace(/\0/g, '')
-                    .trim()
-                    .slice(0, 2000);
-                data.extra = `${prefix}${cleanSummary}\n\n${existing}`.trim();
-            }
-        }
-
         // ── PUT request with optimistic-lock header ────────────────────────
         this.#checkRate();
-        const res = await fetch(
-            `${ZOTERO_BASE}/users/${this.#userId}/items/${key}`,
-            {
-                method: 'PUT',
-                headers: {
-                    ...this.#headers(),
-                    'Content-Type': 'application/json',
-                    // SECURITY: optimistic-lock prevents overwriting concurrent edits
-                    'If-Unmodified-Since-Version': String(version),
-                },
-                body: JSON.stringify(data),
-            }
-        );
+        let res;
+        try {
+            res = await fetch(
+                `${ZOTERO_BASE}/users/${this.#userId}/items/${key}`,
+                {
+                    method: 'PUT',
+                    mode: 'cors',
+                    headers: {
+                        ...this.#headers(),
+                        'Content-Type': 'application/json',
+                        // SECURITY: optimistic-lock prevents overwriting concurrent edits
+                        'If-Unmodified-Since-Version': String(version),
+                    },
+                    body: JSON.stringify(data),
+                }
+            );
+        } catch {
+            throw new Error(
+                'Falha de rede ao exportar para o Zotero. ' +
+                'Verifique sua conexão e tente novamente.'
+            );
+        }
 
         if (res.status === 412) {
             throw new Error('O item foi modificado no Zotero por outra sessão. Recarregue e tente novamente.');
@@ -192,6 +197,56 @@ export class ZoteroClient {
             throw new Error(`Falha ao exportar para o Zotero (código ${res.status}).`);
         }
 
+        // ── Create note in Notes tab ──────────────────────────────────────
+        if (summary) {
+            await this.#createNote(key, summary);
+        }
+
         return true;
+    }
+
+    // Create a child note on a Zotero item (appears in the Notes tab).
+    async #createNote(parentKey, summary) {
+        // SECURITY: sanitize summary text before writing
+        const cleanSummary = String(summary)
+            .replace(/\0/g, '')
+            .trim()
+            .slice(0, 2000);
+
+        // Wrap in minimal HTML; Zotero renders note content as rich text.
+        const noteHtml =
+            `<p><strong>[TagMe]</strong></p>` +
+            `<p>${cleanSummary.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</p>`;
+
+        this.#checkRate();
+        let res;
+        try {
+            res = await fetch(`${ZOTERO_BASE}/users/${this.#userId}/items`, {
+                method: 'POST',
+                mode: 'cors',
+                headers: {
+                    ...this.#headers(),
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify([{
+                    itemType: 'note',
+                    parentItem: parentKey,
+                    note: noteHtml,
+                    tags: [],
+                    collections: [],
+                    relations: {},
+                }]),
+            });
+        } catch {
+            // Note creation failure is non-fatal — tags were already saved
+            throw new Error('Tags exportadas, mas falha ao criar nota no Zotero. Verifique sua conexão.');
+        }
+
+        if (res.status === 403) {
+            throw new Error('Tags exportadas, mas sem permissão para criar notas. Verifique as permissões da sua chave de API.');
+        }
+        if (!res.ok) {
+            throw new Error(`Tags exportadas, mas falha ao criar nota (código ${res.status}).`);
+        }
     }
 }

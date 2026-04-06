@@ -13,7 +13,7 @@
                  font-src https://fonts.gstatic.com;
                  img-src 'self' data: https:;
                  worker-src https://cdn.jsdelivr.net;
-                 connect-src https://api.zotero.org https://api.crossref.org https://*.puter.com;">
+                 connect-src https://api.zotero.org https://api.crossref.org https://*.puter.com wss://*.puter.com;">
     <title>TagMe</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -29,17 +29,31 @@
     <header id="app-header" role="banner">
         <a href="../index.html" class="logo" aria-label="TagMe — Voltar ao início">Tag<em>Me</em></a>
         <ol id="step-trail" class="step-trail" aria-label="Progresso da tarefa"></ol>
-        <button id="btn-back" class="btn-ghost btn-back" aria-label="Passo anterior" hidden>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
-            Voltar
-        </button>
+        <div class="header-controls">
+            <button id="btn-theme" class="btn-theme" aria-label="Alternar tema claro/escuro" title="Alternar tema">
+                <!-- moon = dark mode active -->
+                <svg class="icon-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79z"/></svg>
+                <!-- sun = light mode active -->
+                <svg class="icon-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+            </button>
+            <button id="btn-back" class="btn-ghost btn-back" aria-label="Passo anterior" hidden>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+                Voltar
+            </button>
+        </div>
     </header>
 
     <main id="app-main" role="main">
 
         <!-- ── VIEW 0: CONNECT ── -->
         <section class="view" id="view-connect" data-view="connect" role="region" aria-label="Conectar ao Zotero">
-            <div class="view-inner">
+            <div class="view-inner view-inner--connect">
+                <button id="btn-theme-connect" class="btn-theme btn-theme--connect" aria-label="Alternar tema claro/escuro" title="Alternar tema">
+                    <svg class="icon-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79z"/></svg>
+                    <svg class="icon-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+                    <span class="btn-theme__label icon-moon">Tema escuro</span>
+                    <span class="btn-theme__label icon-sun">Tema claro</span>
+                </button>
                 <span class="s-tag">Passo 1 de 5</span>
                 <h1 class="s-title">Conecte sua biblioteca <em>Zotero</em></h1>
                 <p class="s-body">Cole sua chave de API do Zotero e seu User ID para acessarmos sua biblioteca.
@@ -90,6 +104,11 @@
                         Conectar biblioteca
                     </button>
                 </form>
+
+                <p class="cred-save-hint">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" style="flex-shrink:0;margin-top:1px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    Guarde sua API Key e User ID em um arquivo de texto no seu computador — você precisará deles toda vez que abrir o TagMe.
+                </p>
             </div>
         </section>
 
@@ -176,7 +195,7 @@
                             </span>
                             <span class="source-btn__label">Carregar PDF</span>
                             <span class="source-btn__desc" id="pdf-hint">
-                                Extrai o texto do arquivo PDF
+                                IA lê o PDF diretamente por visão
                             </span>
                         </button>
                     </div>

@@ -296,3 +296,29 @@ export function debounce(fn, ms) {
         timer = setTimeout(() => fn.apply(this, args), ms);
     };
 }
+
+// ── Day / Night theme toggle ──────────────────────────────────────────────
+const THEME_KEY = 'tagme-theme';
+
+export function initTheme() {
+    const stored = localStorage.getItem(THEME_KEY);
+    if (stored === 'light' || stored === 'dark') {
+        document.documentElement.setAttribute('data-theme', stored);
+    }
+    // If no stored preference, CSS media query handles it automatically.
+
+    document.querySelectorAll('.btn-theme').forEach(btn => {
+        btn.addEventListener('click', toggleTheme);
+    });
+}
+
+export function toggleTheme() {
+    const html = document.documentElement;
+    const current = html.getAttribute('data-theme');
+    // Determine effective current theme (accounting for system preference)
+    const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const isDark = current === 'dark' || (!current && systemDark);
+    const next = isDark ? 'light' : 'dark';
+    html.setAttribute('data-theme', next);
+    localStorage.setItem(THEME_KEY, next);
+}

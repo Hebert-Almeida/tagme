@@ -21,20 +21,23 @@ body {
 }
 
 .header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    padding: 30px;
+    background: #111;
+    color: #f5f5f5;
+    padding: 24px 30px;
     text-align: center;
+    border-bottom: 2px solid #33d333;
 }
 
 .header h1 {
-    font-size: 2.5em;
-    margin-bottom: 10px;
+    font-size: 1.8em;
+    margin-bottom: 6px;
+    color: #33d333;
+    letter-spacing: -0.02em;
 }
 
 .header p {
-    font-size: 1.1em;
-    opacity: 0.9;
+    font-size: 0.95em;
+    color: #888;
 }
 
 .content {
