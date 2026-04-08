@@ -1,25 +1,66 @@
-/* ── TOKENS ── */
+/* ═══════════════════════════════════════════════════════════════════════════
+   TagMe — Landing Page Styles
+   Supports dark (default) and light themes via [data-theme] attribute.
+   Falls back to system preference via prefers-color-scheme.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Design Tokens ───────────────────────────────────────────────────────── */
 :root {
-    --green: #33d333;
-    --green-dim: rgba(51, 211, 51, 0.15);
-    --green-glow: rgba(51, 211, 51, 0.35);
-    --bg: #111;
-    --bg-2: #161616;
-    --bg-3: #1c1c1c;
+    --accent: #2fbd2f;
+    --accent-dim: rgba(47, 189, 47, 0.12);
+    --accent-glow: rgba(47, 189, 47, 0.30);
+    --bg: #0f0f0f;
+    --bg-2: #151515;
+    --bg-3: #1a1a1a;
     --border: #222;
     --border-mid: #2a2a2a;
     --text: #f5f5f5;
-    --text-muted: #888;
+    --text-mid: #b0b0b0;
+    --text-muted: #777;
     --text-dim: #444;
     --header-h: 52px;
     --section-pad: clamp(1.5rem, 4vw, 4rem);
     --radius-sm: 6px;
     --radius-md: 10px;
-    --radius-lg: 16px;
-    --transition: 0.2s ease;
+    --radius-lg: 14px;
+    --transition: 0.22s ease;
 }
 
-/* ── RESET ── */
+/* ── Light Theme ─────────────────────────────────────────────────────────── */
+[data-theme="light"] {
+    --accent: #1a8a1a;
+    --accent-dim: rgba(26, 138, 26, 0.08);
+    --accent-glow: rgba(26, 138, 26, 0.15);
+    --bg: #f8f7f5;
+    --bg-2: #efeeec;
+    --bg-3: #e6e5e2;
+    --border: #d8d7d4;
+    --border-mid: #cccbc8;
+    --text: #1a1a1a;
+    --text-mid: #4a4a4a;
+    --text-muted: #6b6b6b;
+    --text-dim: #aaa;
+}
+
+/* Auto light theme for users without stored preference */
+@media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+        --accent: #1a8a1a;
+        --accent-dim: rgba(26, 138, 26, 0.08);
+        --accent-glow: rgba(26, 138, 26, 0.15);
+        --bg: #f8f7f5;
+        --bg-2: #efeeec;
+        --bg-3: #e6e5e2;
+        --border: #d8d7d4;
+        --border-mid: #cccbc8;
+        --text: #1a1a1a;
+        --text-mid: #4a4a4a;
+        --text-muted: #6b6b6b;
+        --text-dim: #aaa;
+    }
+}
+
+/* ── Reset ───────────────────────────────────────────────────────────────── */
 *,
 *::before,
 *::after {
@@ -60,20 +101,19 @@ button {
     cursor: none;
 }
 
-/* focus-visible acessível */
 :focus-visible {
-    outline: 2px solid var(--green);
+    outline: 2px solid var(--accent);
     outline-offset: 3px;
     border-radius: var(--radius-sm);
 }
 
-/* ── CURSOR ── */
+/* ── Custom Cursor ───────────────────────────────────────────────────────── */
 #cursor {
     position: fixed;
     width: 10px;
     height: 10px;
     border-radius: 50%;
-    background: var(--green);
+    background: var(--accent);
     pointer-events: none;
     z-index: 99999;
     transform: translate(-50%, -50%);
@@ -88,18 +128,18 @@ button {
 #cursor.expanded {
     width: 32px;
     height: 32px;
-    background: var(--green-dim);
-    border: 1.5px solid var(--green);
+    background: var(--accent-dim);
+    border: 1.5px solid var(--accent);
 }
 
-/* ── HEADER ── */
+/* ── Header ──────────────────────────────────────────────────────────────── */
 #hdr {
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
     height: var(--header-h);
-    background: rgba(17, 17, 17, 0.88);
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
     border-bottom: 1px solid var(--bg-3);
@@ -114,12 +154,13 @@ button {
     font-size: 1.4rem;
     font-weight: 800;
     letter-spacing: -0.01em;
+    color: var(--text);
     user-select: none;
 }
 
 .logo em {
     font-style: italic;
-    color: var(--green);
+    color: var(--accent);
 }
 
 .dnav ul {
@@ -138,10 +179,49 @@ button {
 
 .dnav a.on,
 .dnav a:hover {
-    color: var(--green);
-    border-bottom-color: var(--green);
+    color: var(--accent);
+    border-bottom-color: var(--accent);
 }
 
+/* Header right-side actions (theme toggle + burger) */
+.hdr-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* ── Theme Toggle Button ─────────────────────────────────────────────────── */
+.btn-theme {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: var(--bg-3);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    transition: color var(--transition), border-color var(--transition), background var(--transition);
+}
+
+.btn-theme:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+}
+
+/* Show sun icon in dark mode, moon icon in light mode */
+.theme-icon--moon { display: none; }
+.theme-icon--sun  { display: block; }
+
+[data-theme="light"] .theme-icon--moon { display: block; }
+[data-theme="light"] .theme-icon--sun  { display: none; }
+
+@media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) .theme-icon--moon { display: block; }
+    :root:not([data-theme="dark"]) .theme-icon--sun  { display: none; }
+}
+
+/* ── Burger Menu Button ──────────────────────────────────────────────────── */
 #burger {
     display: none;
     flex-direction: column;
@@ -161,10 +241,11 @@ button {
 }
 
 #burger:hover span {
-    background: var(--green);
+    background: var(--accent);
 }
 
-/* ── STACK & PAGES ── */
+/* ── Stack & Pages ───────────────────────────────────────────────────────── */
+/* Full-viewport stack with 3D perspective for the card-flip transitions. */
 #stack {
     position: fixed;
     inset: 0;
@@ -188,7 +269,7 @@ button {
     will-change: transform, opacity;
 }
 
-/* ── SECTION base ── */
+/* ── Section Base ────────────────────────────────────────────────────────── */
 .section {
     position: absolute;
     inset: 0;
@@ -197,37 +278,30 @@ button {
     align-items: center;
     justify-content: center;
     text-align: center;
-    padding: var(--section-pad) var(--section-pad);
+    padding: var(--section-pad);
     gap: 1.4rem;
     background: var(--bg);
 }
 
-/* secções com overflow recebem scroll interno */
+/* Sections with content taller than viewport get internal scroll */
 .section--scroll {
     overflow-y: auto;
     overflow-x: hidden;
     justify-content: flex-start;
     padding-top: calc(var(--section-pad) + 1rem);
     padding-bottom: calc(var(--section-pad) + 1rem);
-    /* webkit scrollbar discreto */
     scrollbar-width: thin;
     scrollbar-color: var(--border-mid) transparent;
 }
 
-.section--scroll::-webkit-scrollbar {
-    width: 4px;
-}
-
-.section--scroll::-webkit-scrollbar-track {
-    background: transparent;
-}
-
+.section--scroll::-webkit-scrollbar { width: 4px; }
+.section--scroll::-webkit-scrollbar-track { background: transparent; }
 .section--scroll::-webkit-scrollbar-thumb {
     background: var(--border-mid);
     border-radius: 4px;
 }
 
-/* linha verde animada */
+/* Accent line at the top of the active section */
 .section::after {
     content: '';
     position: absolute;
@@ -235,8 +309,8 @@ button {
     left: 0;
     right: 0;
     height: 2px;
-    background: var(--green);
-    box-shadow: 0 0 12px var(--green-glow);
+    background: var(--accent);
+    box-shadow: 0 0 12px var(--accent-glow);
     transform: scaleX(0);
     transform-origin: left;
     transition: transform 0.7s 0.15s cubic-bezier(0.16, 1, 0.3, 1);
@@ -247,7 +321,7 @@ button {
     transform: scaleX(1);
 }
 
-/* scroll-body para seção Sobre */
+/* Scrollable body wrapper (e.g. "Sobre" section) */
 .scroll-body {
     display: flex;
     flex-direction: column;
@@ -258,12 +332,12 @@ button {
     text-align: justify;
 }
 
-/* ── CONTEÚDO BASE ── */
+/* ── Typography & Content ────────────────────────────────────────────────── */
 .s-tag {
     font-size: 0.65rem;
     font-weight: 800;
     letter-spacing: 0.18em;
-    color: var(--green);
+    color: var(--accent);
     text-transform: uppercase;
     opacity: 0;
 }
@@ -275,12 +349,13 @@ button {
     max-width: 700px;
     min-height: 1.15em;
     opacity: 0;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.025em;
+    color: var(--text);
 }
 
 .s-title em {
     font-style: italic;
-    color: var(--green);
+    color: var(--accent);
 }
 
 .s-body {
@@ -299,7 +374,7 @@ button {
     opacity: 0;
 }
 
-/* ── S-MEDIA (placeholder / lazy) ── */
+/* ── Media Placeholder (lazy-loaded images/video) ────────────────────────── */
 .s-media {
     width: 100%;
     max-width: 520px;
@@ -319,6 +394,7 @@ button {
     flex-shrink: 0;
 }
 
+/* Animated border spin (conic-gradient) */
 @property --angle {
     syntax: '<angle>';
     initial-value: 0deg;
@@ -332,7 +408,7 @@ button {
     border-radius: calc(var(--radius-md) + 2px);
     background: conic-gradient(from var(--angle),
             transparent 0%, transparent 70%,
-            var(--green) 85%, transparent 100%);
+            var(--accent) 85%, transparent 100%);
     animation: spin-border 3s linear infinite;
     z-index: 0;
 }
@@ -352,27 +428,21 @@ button {
 }
 
 @keyframes spin-border {
-    to {
-        --angle: 360deg;
-    }
+    to { --angle: 360deg; }
 }
 
+/* Fallback for browsers without conic-gradient support */
 @supports not (background: conic-gradient(from 0deg, red, blue)) {
-    .s-media::before {
-        display: none;
-    }
-
-    .s-media {
-        border: 1px dashed var(--border);
-    }
+    .s-media::before { display: none; }
+    .s-media { border: 1px dashed var(--border); }
 }
 
-/* ── CTA ── */
+/* ── CTA Buttons ─────────────────────────────────────────────────────────── */
 .s-cta {
     padding: 10px 24px;
     background: transparent;
-    border: 1.5px solid var(--green);
-    color: var(--green);
+    border: 1.5px solid var(--accent);
+    color: var(--accent);
     border-radius: var(--radius-sm);
     font-size: 0.82rem;
     font-weight: 700;
@@ -382,7 +452,7 @@ button {
 }
 
 .s-cta:hover {
-    background: var(--green);
+    background: var(--accent);
     color: var(--bg);
 }
 
@@ -390,7 +460,7 @@ button {
     transform: scale(0.97);
 }
 
-/* ── HOW-TO GRID (página 2) ── */
+/* ── How-To Grid (page 2) ────────────────────────────────────────────────── */
 .how-grid {
     display: grid;
     grid-template-columns: 1fr 1px 1fr;
@@ -426,13 +496,13 @@ button {
     text-transform: uppercase;
     padding: 3px 8px;
     border-radius: 4px;
-    background: var(--green-dim);
-    color: var(--green);
-    border: 1px solid rgba(51, 211, 51, 0.3);
+    background: var(--accent-dim);
+    color: var(--accent);
+    border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
 }
 
 .how-col__badge--local {
-    background: rgba(255, 255, 255, 0.05);
+    background: color-mix(in srgb, var(--text) 5%, transparent);
     color: var(--text-muted);
     border-color: var(--border);
 }
@@ -459,7 +529,7 @@ button {
 .how-step__num {
     font-size: 0.7rem;
     font-weight: 800;
-    color: var(--green);
+    color: var(--accent);
     letter-spacing: 0.05em;
     min-width: 22px;
     padding-top: 2px;
@@ -477,7 +547,7 @@ button {
     align-self: flex-start;
 }
 
-/* ── VERSIONS GRID (página 3) ── */
+/* ── Versions Grid (page 3) ──────────────────────────────────────────────── */
 .versions-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -505,12 +575,12 @@ button {
 }
 
 .version-card--featured {
-    border-color: rgba(51, 211, 51, 0.4);
-    background: rgba(51, 211, 51, 0.03);
+    border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+    background: color-mix(in srgb, var(--accent) 3%, var(--bg-2));
 }
 
 .version-card--featured:hover {
-    border-color: var(--green);
+    border-color: var(--accent);
 }
 
 .version-card__badge {
@@ -523,7 +593,7 @@ button {
     letter-spacing: 0.12em;
     text-transform: uppercase;
     padding: 3px 10px;
-    background: var(--green);
+    background: var(--accent);
     color: var(--bg);
     border-radius: 20px;
     white-space: nowrap;
@@ -537,13 +607,14 @@ button {
     justify-content: center;
     background: var(--bg-3);
     border-radius: var(--radius-sm);
-    color: var(--green);
+    color: var(--accent);
     flex-shrink: 0;
 }
 
 .version-card__name {
     font-size: 1.1rem;
     font-weight: 800;
+    color: var(--text);
     letter-spacing: -0.01em;
 }
 
@@ -576,7 +647,7 @@ button {
     width: 5px;
     height: 5px;
     border-radius: 50%;
-    background: var(--green);
+    background: var(--accent);
     opacity: 0.6;
 }
 
@@ -586,7 +657,7 @@ button {
     text-align: center;
 }
 
-/* ── DEVS GRID (página 4) ── */
+/* ── Developers Grid (page 4) ────────────────────────────────────────────── */
 .devs-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -628,11 +699,11 @@ button {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    /* esconde se src vazio */
     opacity: 0;
     transition: opacity 0.3s;
 }
 
+/* Show photo only when src is set */
 .dev-card__photo[src]:not([src=""]) {
     opacity: 1;
 }
@@ -649,7 +720,7 @@ button {
     letter-spacing: 0.05em;
 }
 
-/* esconde as iniciais quando a foto carrega */
+/* Hide initials when photo is loaded */
 .dev-card__photo[src]:not([src=""])~.dev-card__initials {
     display: none;
 }
@@ -664,6 +735,7 @@ button {
 .dev-card__name {
     font-size: 0.95rem;
     font-weight: 800;
+    color: var(--text);
     letter-spacing: -0.01em;
     white-space: nowrap;
     overflow: hidden;
@@ -672,7 +744,7 @@ button {
 
 .dev-card__role {
     font-size: 0.72rem;
-    color: var(--green);
+    color: var(--accent);
     font-weight: 700;
     letter-spacing: 0.04em;
     text-transform: uppercase;
@@ -708,10 +780,10 @@ button {
 }
 
 .dev-social:hover {
-    color: var(--green);
+    color: var(--accent);
 }
 
-/* ── COUNTER ── */
+/* ── Section Counter ─────────────────────────────────────────────────────── */
 #ctr {
     position: fixed;
     bottom: 1rem;
@@ -726,10 +798,10 @@ button {
 }
 
 #ctr.flash {
-    color: var(--green);
+    color: var(--accent);
 }
 
-/* ── DOTS ── */
+/* ── Navigation Dots ─────────────────────────────────────────────────────── */
 #dots {
     position: fixed;
     right: 1.1rem;
@@ -752,12 +824,12 @@ button {
 }
 
 .dot.on {
-    background: var(--green);
+    background: var(--accent);
     height: 20px;
     border-radius: 3px;
 }
 
-/* ── MOBILE MENU ── */
+/* ── Mobile Menu ─────────────────────────────────────────────────────────── */
 #mbg {
     position: fixed;
     inset: 0;
@@ -807,7 +879,7 @@ button {
 }
 
 #mx:hover {
-    color: var(--green);
+    color: var(--accent);
 }
 
 #mpanel nav ul {
@@ -825,7 +897,7 @@ button {
 }
 
 #mpanel nav a.on {
-    color: var(--green);
+    color: var(--accent);
 }
 
 #mpanel nav a.on::before {
@@ -837,30 +909,26 @@ button {
     width: 4px;
     height: 4px;
     border-radius: 50%;
-    background: var(--green);
+    background: var(--accent);
 }
 
-/* ── RESPONSIVE BREAKPOINTS ── */
+/* ═══════════════════════════════════════════════════════════════════════════
+   Responsive Breakpoints
+   ═══════════════════════════════════════════════════════════════════════════ */
 
-/* tablet */
+/* ── Tablet (≤ 768px) ────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
     :root {
         --section-pad: 1.8rem;
     }
 
-    .dnav {
-        display: none;
-    }
-
-    #burger {
-        display: flex;
-    }
+    .dnav { display: none; }
+    #burger { display: flex; }
 
     .s-title {
         font-size: clamp(1.6rem, 5vw, 2.4rem);
     }
 
-    /* how-to: empilha verticalmente */
     .how-grid {
         grid-template-columns: 1fr;
         gap: 1.5rem 0;
@@ -877,36 +945,26 @@ button {
         text-align: center;
     }
 
-    /* versões: 1 coluna */
     .versions-grid {
         grid-template-columns: 1fr;
         max-width: 400px;
     }
 
-    /* devs: 1 coluna */
     .devs-grid {
         grid-template-columns: 1fr;
     }
 }
 
-/* mobile pequeno */
+/* ── Small Mobile (≤ 480px) ──────────────────────────────────────────────── */
 @media (max-width: 480px) {
     :root {
         --section-pad: 1.2rem;
     }
 
-    html,
-    body,
-    a,
-    button {
-        cursor: auto;
-    }
+    /* Disable custom cursor on touch devices */
+    html, body, a, button { cursor: auto; }
+    #cursor { display: none; }
 
-    #cursor {
-        display: none;
-    }
-
-    /* sem backdrop-filter em GPU fraca */
     #hdr {
         backdrop-filter: none;
         -webkit-backdrop-filter: none;
@@ -930,7 +988,6 @@ button {
         text-align: center;
     }
 
-    /* dev card: avatar menor + layout mais compacto */
     .dev-card {
         gap: 0.8rem;
         padding: 1rem;

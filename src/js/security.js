@@ -1,17 +1,17 @@
 'use strict';
 
-// SECURITY: Maximum allowed response payload (512 KB)
+// Hard cap on API response payloads (512 KB) to prevent large-payload attacks.
 export const MAX_RESPONSE_BYTES = 524_288;
 
-// SECURITY: Sanitize a value for safe insertion via textContent.
-// Strips null bytes, normalizes whitespace. Always use with .textContent, never .innerHTML.
+// Strips null bytes and trims whitespace for safe .textContent insertion.
+// Always pair with .textContent — never use the result in .innerHTML.
 export function sanitizeText(value) {
     if (value === null || value === undefined) return '';
     return String(value).replace(/\0/g, '').trim();
 }
 
-// SECURITY: Sanitize HTML for safe innerHTML insertion using DOMPurify.
-// Only call this when HTML structure is genuinely needed (e.g. rendering JATS abstracts).
+// Sanitizes HTML via DOMPurify for safe innerHTML insertion.
+// Only needed when HTML structure matters (e.g. JATS abstracts from CrossRef).
 // Falls back to text-only if DOMPurify is unavailable.
 export function sanitizeHTML(html) {
     if (typeof html !== 'string') return '';
@@ -28,10 +28,9 @@ export function sanitizeHTML(html) {
     return tmp.innerHTML;
 }
 
-// SECURITY: Read a fetch Response as JSON, enforcing a hard byte-size cap.
-// Prevents zip-bomb and large-payload attacks. Never uses eval().
+// Reads a fetch Response as JSON with a hard byte-size cap.
+// Guards against oversized payloads. Uses JSON.parse (never eval).
 export async function readSafeJSON(response) {
-    // Check declared size first (not always present)
     const contentLength = response.headers.get('content-length');
     if (contentLength && parseInt(contentLength, 10) > MAX_RESPONSE_BYTES) {
         throw new Error('Resposta da API muito grande para processar com segurança.');
@@ -39,12 +38,10 @@ export async function readSafeJSON(response) {
 
     const text = await response.text();
 
-    // SECURITY: validate actual payload size
     if (text.length > MAX_RESPONSE_BYTES) {
         throw new Error('Resposta da API muito grande para processar com segurança.');
     }
 
-    // SECURITY: parse without eval()
     try {
         return JSON.parse(text);
     } catch {
@@ -52,8 +49,8 @@ export async function readSafeJSON(response) {
     }
 }
 
-// SECURITY: Client-side rate limiter.
-// Tracks timestamps of recent calls; rejects if over the configured threshold.
+// Rolling-window rate limiter. Tracks timestamps of recent calls and
+// rejects when the count exceeds the configured threshold.
 export class RateLimiter {
     #timestamps = [];
     #maxRequests;
@@ -69,7 +66,6 @@ export class RateLimiter {
     // Returns true if the call is allowed, false if throttled.
     check() {
         const now = Date.now();
-        // Prune expired timestamps
         this.#timestamps = this.#timestamps.filter(t => now - t < this.#windowMs);
         if (this.#timestamps.length >= this.#maxRequests) return false;
         this.#timestamps.push(now);
@@ -84,20 +80,18 @@ export class RateLimiter {
     }
 }
 
-// SECURITY: Validate a Zotero User ID (must be numeric, 1–12 digits).
+// Zotero User ID: numeric, 1-12 digits.
 export function validateUserId(id) {
     return typeof id === 'string' && /^\d{1,12}$/.test(id.trim());
 }
 
-// SECURITY: Basic format check for a Zotero API key (alphanumeric, 16–64 chars).
-// Does not guarantee the key is valid — that requires a live API call.
+// Zotero API key: alphanumeric, 16-64 chars. Does not verify live access.
 export function validateApiKey(key) {
     return typeof key === 'string' && /^[a-zA-Z0-9]{16,64}$/.test(key.trim());
 }
 
-// SECURITY: Assert that obj has the expected keys and types.
-// Throws a descriptive error rather than silently consuming malformed API data.
-// shape: Record<string, 'string'|'number'|'boolean'|'object'|'array'|`optional-${type}`>
+// Asserts that `obj` matches a type shape. Throws on missing keys or wrong types.
+// shape values: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'optional-<type>'
 export function assertSchema(obj, shape) {
     if (obj === null || typeof obj !== 'object' || Array.isArray(obj)) {
         throw new Error('Schema validation failed: expected a plain object.');

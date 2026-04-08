@@ -4,16 +4,13 @@ import { sanitizeText } from '../js/security.js';
 import { celebrateExport, bindCursorTargets } from '../js/ui.js';
 
 // ── ExportModal ───────────────────────────────────────────────────────────
-// Confirmation modal before writing to Zotero.
-// Shows tag list + summary preview, then calls onConfirm / onCancel.
+// Confirmation modal shown before writing tags/summary to Zotero.
+// Displays a preview of what will be exported and handles the async write.
 export class ExportModal {
-    #slot;          // HTMLElement — the modal-slot div
-    #onConfirm;     // async () => void
-    #onCancel;      // () => void
+    #slot;
+    #onConfirm;
+    #onCancel;
 
-    // @param slot      - the #modal-slot element to inject into
-    // @param onConfirm - async callback to run on confirmation
-    // @param onCancel  - callback to run on cancel
     constructor(slot, onConfirm, onCancel) {
         this.#slot      = slot;
         this.#onConfirm = onConfirm;
@@ -22,9 +19,6 @@ export class ExportModal {
 
     // ── Public API ────────────────────────────────────────────────────────
 
-    // Show the confirmation modal.
-    // @param tags    - string[] — selected tags to export
-    // @param summary - string | null — summary to export (null = skip)
     show(tags, summary) {
         this.#slot.innerHTML = '';
 
@@ -32,17 +26,14 @@ export class ExportModal {
         this.#slot.appendChild(modal);
         this.#slot.hidden = false;
 
-        // Focus the confirm button for accessibility
         const confirmBtn = modal.querySelector('[data-action="confirm"]');
         confirmBtn?.focus();
 
-        // Keyboard trap: Escape = cancel
         this._escHandler = (e) => {
             if (e.key === 'Escape') this._dismiss();
         };
         document.addEventListener('keydown', this._escHandler);
 
-        // GSAP entrance
         gsap.fromTo(modal,
             { scale: 0.92, opacity: 0, y: 16 },
             { scale: 1, opacity: 1, y: 0, duration: 0.38, ease: 'back.out(1.5)' }
@@ -51,7 +42,6 @@ export class ExportModal {
         bindCursorTargets();
     }
 
-    // Replace modal contents with a success state.
     showSuccess(tagCount) {
         const modal = this.#slot.querySelector('.export-modal');
         if (!modal) return;
@@ -97,12 +87,10 @@ export class ExportModal {
         });
     }
 
-    // Show an error message within the modal (keeps it open).
     showError(message) {
         const modal = this.#slot.querySelector('.export-modal');
         if (!modal) return;
 
-        // Remove previous error if any
         modal.querySelector('.modal-error')?.remove();
 
         const err = document.createElement('p');
@@ -117,7 +105,6 @@ export class ExportModal {
             modal.appendChild(err);
         }
 
-        // Re-enable confirm button so user can retry
         const confirmBtn = modal.querySelector('[data-action="confirm"]');
         if (confirmBtn) {
             confirmBtn.disabled = false;
@@ -131,13 +118,11 @@ export class ExportModal {
         const modal = document.createElement('div');
         modal.className = 'export-modal';
 
-        // Title
         const title = document.createElement('h2');
         title.className = 'export-modal__title';
         title.textContent = 'Confirmar exportação para Zotero';
         modal.appendChild(title);
 
-        // Tags section
         if (tags.length > 0) {
             const tagsLabel = document.createElement('p');
             tagsLabel.className = 'export-modal__section-label';
@@ -157,7 +142,6 @@ export class ExportModal {
             modal.append(tagsLabel, tagsWrap);
         }
 
-        // Summary section
         if (summary) {
             const sumLabel = document.createElement('p');
             sumLabel.className = 'export-modal__section-label';
@@ -170,7 +154,6 @@ export class ExportModal {
             modal.append(sumLabel, sumBox);
         }
 
-        // Actions
         const actions = document.createElement('div');
         actions.className = 'export-modal__actions';
 

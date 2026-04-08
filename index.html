@@ -10,7 +10,6 @@
       name="description"
       content="TagMe — geração automática de tags para artigos acadêmicos via Zotero."
     />
-    <!-- CSP: bloqueia inline scripts maliciosos e limita origens de recursos -->
     <meta
       http-equiv="Content-Security-Policy"
       content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'none';"
@@ -95,14 +94,28 @@
           </li>
         </ul>
       </nav>
-      <button
-        id="burger"
-        aria-label="Abrir menu"
-        aria-expanded="false"
-        aria-controls="mpanel"
-      >
-        <span></span><span></span><span></span>
-      </button>
+      <div class="hdr-actions">
+        <button
+          id="theme-toggle"
+          class="btn-theme"
+          aria-label="Alternar tema claro/escuro"
+        >
+          <svg class="theme-icon theme-icon--sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+          </svg>
+          <svg class="theme-icon theme-icon--moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+        </button>
+        <button
+          id="burger"
+          aria-label="Abrir menu"
+          aria-expanded="false"
+          aria-controls="mpanel"
+        >
+          <span></span><span></span><span></span>
+        </button>
+      </div>
     </header>
 
     <main
@@ -131,7 +144,6 @@
             para o Zotero. Rápido, preciso e sem complicação.
           </p>
           <div class="intro-btns">
-            <!-- FIX: IDs únicos — era tryWebBtn duplicado nas páginas 0 e 3 -->
             <button
               class="s-cta"
               data-action="web"
@@ -197,7 +209,6 @@
           <div class="s-title">Simples assim</div>
 
           <div class="how-grid">
-            <!-- Versão Web -->
             <div class="how-col">
               <div class="how-col__header">
                 <span class="how-col__badge">Web</span>
@@ -262,7 +273,6 @@
               aria-hidden="true"
             ></div>
 
-            <!-- Versão Local -->
             <div class="how-col">
               <div class="how-col__header">
                 <span class="how-col__badge how-col__badge--local">Local</span>
@@ -457,7 +467,6 @@
                 class="dev-card__avatar"
                 aria-hidden="true"
               >
-                <!-- img real: substitua src e alt -->
                 <img
                   src=""
                   alt=""
@@ -699,7 +708,6 @@
         </div>
       </div>
     </main>
-    <!-- /#stack -->
 
     <div
       id="dots"

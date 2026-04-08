@@ -124,11 +124,9 @@ function navigateTo(viewName) {
     state.view = viewName;
     updateStepTrail(inIdx);
 
-    // Show/hide back button
     el.btnBack.hidden = inIdx === 0;
 
     transitionViews(outEl, inEl, dir).then(() => {
-        // Scroll new view to top
         inEl.scrollTop = 0;
         bindCursorTargets();
     });
@@ -151,12 +149,10 @@ async function handleConnect(e) {
     const apiKey = sanitizeText(el.inpApikey.value);
     const userId = sanitizeText(el.inpUserid.value);
 
-    // Clear previous errors
     hideInlineError(el.apikeyErr);
     hideInlineError(el.useridErr);
     hideInlineError(el.connectErr);
 
-    // Validate inputs
     let hasError = false;
 
     if (!apiKey) {
@@ -191,7 +187,7 @@ async function handleConnect(e) {
         const client = new ZoteroClient(apiKey, userId);
         await client.verifyConnection();
 
-        // Destroy previous session if any
+        // Wipe credentials from any previous session before storing the new client
         state.client?.destroy();
         state.client = client;
 
@@ -225,13 +221,11 @@ async function loadLibrary() {
     articleList.showLoading();
 
     try {
-        // Load collections in parallel with first page of items
         const [collectionsResult, itemsResult] = await Promise.allSettled([
             state.client.fetchCollections(),
             state.client.fetchItems(0, state.library.perPage),
         ]);
 
-        // Populate collection filter
         if (collectionsResult.status === 'fulfilled') {
             state.library.collections = collectionsResult.value;
             _populateCollectionFilter(state.library.collections);
@@ -333,7 +327,13 @@ async function handlePageChange(newPage) {
 
     try {
         const start = newPage * state.library.perPage;
-        const { items, total } = await state.client.fetchItems(start, state.library.perPage);
+        const { searchTerm, collectionFilter, perPage } = state.library;
+        const hasFilter = searchTerm || collectionFilter;
+
+        const { items, total } = hasFilter
+            ? await state.client.searchItems(searchTerm, collectionFilter, start, perPage)
+            : await state.client.fetchItems(start, perPage);
+
         state.library.items = items;
         state.library.total = total;
         articleList.render(items, total, newPage);
@@ -368,7 +368,6 @@ function handleArticleSelect(item) {
     state.pdfImages     = null;
     state.doiMeta       = null;
 
-    // Reset article view state
     el.textPreviewArea.hidden  = true;
     el.manualInputArea.hidden  = true;
     el.btnAnalyze.hidden       = true;
@@ -523,9 +522,12 @@ function _showPDFPreview(firstPageDataUrl, fileName, totalPages) {
 
     const info = document.createElement('p');
     info.className = 'pdf-preview-info';
-    info.innerHTML =
-        `<strong>${fileName}</strong> &mdash; ` +
-        `${totalPages} página${totalPages !== 1 ? 's' : ''} serão analisadas pela IA por visão.`;
+    const nameStrong = document.createElement('strong');
+    nameStrong.textContent = fileName;
+    info.appendChild(nameStrong);
+    info.appendChild(document.createTextNode(
+        ` — ${totalPages} página${totalPages !== 1 ? 's' : ''} serão analisadas pela IA por visão.`
+    ));
     wrapper.appendChild(info);
 
     el.textPreviewContent.appendChild(wrapper);
@@ -546,7 +548,6 @@ function handleManualInput() {
     el.inpArticleText.focus();
     hideInlineError(el.articleErr);
 
-    // Restore analyze button visibility if text already present
     if (el.inpArticleText.value.length >= 100) {
         el.btnAnalyze.hidden = false;
     }
@@ -665,7 +666,6 @@ function _renderSummaryView() {
     summaryPanel.showLoading();
     hideInlineError(el.summaryErr);
 
-    // Brief delay for perceived generation
     setTimeout(() => {
         const summary = state.analysis?.summary;
         if (summary && summary.trim().length > 20) {
@@ -691,10 +691,8 @@ async function handleExport(includeSummary) {
     const modal = new ExportModal(
         el.modalSlot,
         async () => {
-            const version = item.version ?? item.data?.version ?? 0;
             await state.client.updateItemTagsAndSummary(
                 item.key,
-                version,
                 tags,
                 summary
             );
@@ -718,8 +716,8 @@ function handleBack() {
     navigateTo(prevView);
 }
 
-// ── Session cleanup ────────────────────────────────────────────────────────
-// SECURITY: Clear API credentials from memory when the user leaves or closes the tab
+// ── Session Cleanup ───────────────────────────────────────────────────────
+// Wipe API credentials from memory when the user navigates away or closes the tab.
 window.addEventListener('beforeunload', () => {
     state.client?.destroy();
 });

@@ -4,23 +4,28 @@ import { readSafeJSON, RateLimiter } from './security.js';
 
 const ZOTERO_BASE = 'https://api.zotero.org';
 
+function escapeHTML(str) {
+    return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
 // ── ZoteroClient ──────────────────────────────────────────────────────────
-// All Zotero Web API communication lives here.
-// SECURITY: API key is stored only in memory (private field), never in
-//           localStorage, sessionStorage, or any persistent store.
+// Handles all Zotero Web API communication.
+// The API key lives only in a private field — never persisted to storage.
 export class ZoteroClient {
-    // SECURITY: private fields prevent accidental exposure
     #apiKey;
     #userId;
-    // SECURITY: 30 requests/minute to prevent accidental rate abuse
-    #limiter = new RateLimiter(30, 60_000);
+    #limiter = new RateLimiter(30, 60_000); // 30 req/min
 
     constructor(apiKey, userId) {
         this.#apiKey  = String(apiKey).trim();
         this.#userId  = String(userId).trim();
     }
 
-    // SECURITY: wipe credentials from memory on logout / session end
+    // Wipe credentials from memory on logout / session end.
     destroy() {
         this.#apiKey  = '';
         this.#userId  = '';
@@ -28,7 +33,7 @@ export class ZoteroClient {
 
     get userId() { return this.#userId; }
 
-    // ── Private helpers ───────────────────────────────────────────────────
+    // ── Private ─────────────────────────────────────────────────────────
 
     #headers() {
         return {
@@ -37,7 +42,6 @@ export class ZoteroClient {
         };
     }
 
-    // SECURITY: throws a user-friendly error if rate limit exceeded
     #checkRate() {
         if (!this.#limiter.check()) {
             const secs = Math.ceil(this.#limiter.msUntilAvailable() / 1000);
@@ -64,7 +68,7 @@ export class ZoteroClient {
 
     // ── Public API ────────────────────────────────────────────────────────
 
-    // Test that the API key + userId are valid and have read access.
+    // Verifies the API key + userId are valid and have read access.
     async verifyConnection() {
         const res = await this.#get(`/users/${this.#userId}/items?limit=1`);
 
@@ -75,8 +79,7 @@ export class ZoteroClient {
         return true;
     }
 
-    // Fetch a page of journal articles from the library.
-    // Returns: { items: ZoteroItem[], total: number }
+    // Fetches a page of journal articles, sorted by date descending.
     async fetchItems(start = 0, limit = 20) {
         const path = `/users/${this.#userId}/items?` +
             `itemType=journalArticle` +
@@ -96,25 +99,20 @@ export class ZoteroClient {
         return { items, total };
     }
 
-    // Fetch all collections for the user (up to 200).
+    // Fetches all user collections (up to 200). Non-fatal on failure.
     async fetchCollections() {
         const res = await this.#get(`/users/${this.#userId}/collections?limit=200`);
-        if (!res.ok) return [];   // non-fatal — library can work without collections
+        if (!res.ok) return [];
 
         const data = await readSafeJSON(res);
         return Array.isArray(data) ? data : [];
     }
 
-    // Search items by query term and/or collection key.
-    // @param term       - search string (empty = no text filter)
-    // @param collection - collection key (empty = all collections)
-    // @param start      - pagination offset
-    // @param limit      - page size
+    // Searches items by query term and/or collection key.
     async searchItems(term = '', collection = '', start = 0, limit = 20) {
         let path = `/users/${this.#userId}/items?itemType=journalArticle` +
             `&start=${start}&limit=${Math.min(limit, 50)}&sort=date&direction=desc`;
 
-        // SECURITY: encode user-supplied strings before embedding in URL
         if (term.trim()) path += `&q=${encodeURIComponent(term.trim())}`;
         if (collection.trim()) path += `&collectionKey=${encodeURIComponent(collection.trim())}`;
 
@@ -126,9 +124,8 @@ export class ZoteroClient {
         return { items: Array.isArray(items) ? items : [], total };
     }
 
-    // Fetch a single item by key (needed to get current version before updating).
+    // Fetches a single item by key (used to get the latest version for updates).
     async fetchItem(key) {
-        // SECURITY: validate key format before embedding in URL
         if (!/^[A-Z0-9]{8}$/i.test(key)) throw new Error('Chave de item inválida.');
 
         const res = await this.#get(`/users/${this.#userId}/items/${key}`);
@@ -137,24 +134,19 @@ export class ZoteroClient {
         return readSafeJSON(res);
     }
 
-    // Write selected tags and an optional summary back to a Zotero item.
-    // Uses optimistic-locking via If-Unmodified-Since-Version to avoid conflicts.
-    async updateItemTagsAndSummary(key, version, newTags, summary) {
-        this.#checkRate();
-
-        // SECURITY: validate key format
+    // Writes selected tags (and optional summary note) back to a Zotero item.
+    // Uses If-Unmodified-Since-Version for optimistic locking.
+    async updateItemTagsAndSummary(key, newTags, summary) {
         if (!/^[A-Z0-9]{8}$/i.test(key)) throw new Error('Chave de item inválida.');
 
-        // Fetch fresh data to get latest version & current fields
         const current = await this.fetchItem(key);
         const data = { ...current.data };
 
-        // ── Merge tags ────────────────────────────────────────────────────
+        // Merge new tags with existing ones (case-insensitive dedup)
         const existingLower = new Set((data.tags || []).map(t => t.tag.toLowerCase()));
         const merged = [...(data.tags || [])];
 
         for (const tag of newTags) {
-            // SECURITY: sanitize each tag string before writing
             const clean = String(tag).replace(/[\n\r\t]/g, ' ').trim().slice(0, 255);
             if (clean && !existingLower.has(clean.toLowerCase())) {
                 merged.push({ tag: clean });
@@ -162,7 +154,7 @@ export class ZoteroClient {
         }
         data.tags = merged;
 
-        // ── PUT request with optimistic-lock header ────────────────────────
+        // PUT with optimistic-lock header
         this.#checkRate();
         let res;
         try {
@@ -174,8 +166,7 @@ export class ZoteroClient {
                     headers: {
                         ...this.#headers(),
                         'Content-Type': 'application/json',
-                        // SECURITY: optimistic-lock prevents overwriting concurrent edits
-                        'If-Unmodified-Since-Version': String(version),
+                        'If-Unmodified-Since-Version': String(current.version),
                     },
                     body: JSON.stringify(data),
                 }
@@ -197,7 +188,6 @@ export class ZoteroClient {
             throw new Error(`Falha ao exportar para o Zotero (código ${res.status}).`);
         }
 
-        // ── Create note in Notes tab ──────────────────────────────────────
         if (summary) {
             await this.#createNote(key, summary);
         }
@@ -205,18 +195,18 @@ export class ZoteroClient {
         return true;
     }
 
-    // Create a child note on a Zotero item (appears in the Notes tab).
+    // Creates a child note on the Zotero item (appears in the Notes tab).
     async #createNote(parentKey, summary) {
-        // SECURITY: sanitize summary text before writing
         const cleanSummary = String(summary)
             .replace(/\0/g, '')
             .trim()
             .slice(0, 2000);
 
         // Wrap in minimal HTML; Zotero renders note content as rich text.
+        const escaped = escapeHTML(cleanSummary);
         const noteHtml =
             `<p><strong>[TagMe]</strong></p>` +
-            `<p>${cleanSummary.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</p>`;
+            `<p>${escaped.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</p>`;
 
         this.#checkRate();
         let res;
@@ -238,7 +228,6 @@ export class ZoteroClient {
                 }]),
             });
         } catch {
-            // Note creation failure is non-fatal — tags were already saved
             throw new Error('Tags exportadas, mas falha ao criar nota no Zotero. Verifique sua conexão.');
         }
 

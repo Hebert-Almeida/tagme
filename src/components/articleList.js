@@ -5,23 +5,18 @@ import { showSkeleton, animateCards, bindCursorTargets } from '../js/ui.js';
 
 // ── ArticleList ───────────────────────────────────────────────────────────
 // Renders a paginated list of Zotero article cards.
-// All DOM nodes are built with DOM API — no innerHTML with user data.
+// All DOM content is built via the DOM API (no innerHTML with user data).
 export class ArticleList {
-    #container;    // HTMLElement
-    #paginationEl; // HTMLElement
-    #countEl;      // HTMLElement
-    #onSelect;     // (item) => void
+    #container;
+    #paginationEl;
+    #countEl;
+    #onSelect;
     #items = [];
     #total = 0;
     #page = 0;
     #perPage;
     #selectedKey = null;
 
-    // @param container    - element to render cards into
-    // @param paginationEl - nav element for prev/next buttons
-    // @param countEl      - element showing "N artigos"
-    // @param onSelect     - callback called with the raw Zotero item
-    // @param perPage      - items per page (default 20)
     constructor(container, paginationEl, countEl, onSelect, perPage = 20) {
         this.#container    = container;
         this.#paginationEl = paginationEl;
@@ -37,10 +32,6 @@ export class ArticleList {
         this.#paginationEl.hidden = true;
     }
 
-    // Render a fresh set of items (replaces previous content).
-    // @param items - array of Zotero item objects
-    // @param total - total items in the library (for pagination math)
-    // @param page  - 0-indexed current page
     render(items, total, page = 0) {
         this.#items = items;
         this.#total = total;
@@ -51,7 +42,6 @@ export class ArticleList {
         this._updateCount();
     }
 
-    // Highlight a card as selected (visual only — selection handled by onClick)
     setSelected(key) {
         this.#selectedKey = key;
         this.#container.querySelectorAll('.article-card').forEach(card => {
@@ -61,7 +51,6 @@ export class ArticleList {
         });
     }
 
-    // Return the current 0-indexed page number
     get currentPage() { return this.#page; }
 
     // ── Private ───────────────────────────────────────────────────────────
@@ -117,13 +106,11 @@ export class ArticleList {
         card.setAttribute('aria-pressed', item.key === this.#selectedKey ? 'true' : 'false');
         card.dataset.key = item.key;
 
-        // Title
         const titleEl = document.createElement('p');
         titleEl.className = 'article-card__title';
         titleEl.textContent = title;
         card.appendChild(titleEl);
 
-        // Meta line
         const metaParts = [
             authorStr || null,
             year ? String(year) : null,
@@ -137,7 +124,6 @@ export class ArticleList {
             card.appendChild(metaEl);
         }
 
-        // Existing tags (read-only pill display)
         if (existingTags.length) {
             const tagsWrap = document.createElement('div');
             tagsWrap.className = 'article-card__tags';

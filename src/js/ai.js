@@ -1,8 +1,8 @@
 'use strict';
 
-// SECURITY: No eval(). Input is truncated/capped before sending to the AI.
-// Every string in the AI response is sanitized and length-capped.
-// Requests race against a hard timeout to prevent hanging.
+// AI analysis module (Puter.js + GPT-4o-mini).
+// Input is truncated before sending; every output string is sanitized and capped.
+// Requests race against a hard timeout to prevent indefinite hangs.
 
 const MAX_INPUT_CHARS = 4_000;  // ~1 000 tokens — enough for an abstract
 const AI_TIMEOUT_MS   = 60_000; // 60 s — generous for vision + cold Puter starts
@@ -75,7 +75,7 @@ function _buildVisionMessages(imageDataUrls, articleMeta) {
 }
 
 // ── Response validator & sanitizer ────────────────────────────────────────
-// SECURITY: every value from the AI is treated as untrusted input.
+// Every value from the AI is treated as untrusted input.
 function _parseResponse(raw) {
     // Strip markdown code fences the model might add despite instructions
     const cleaned = raw.trim()

@@ -1,15 +1,13 @@
 'use strict';
 
-// SECURITY: PDF files are processed entirely client-side.
-// Pages are rendered to canvas and sent as images to the AI vision API.
-// No file content is uploaded to any server by this module.
+// Client-side PDF renderer. Pages are drawn to canvas and converted to
+// JPEG data URLs for the AI vision API. No file content leaves the browser.
 
 const MAX_PDF_BYTES  = 50 * 1024 * 1024; // 50 MB
 const MAX_PAGES      = 4;                 // first N pages sent for vision analysis
-const RENDER_SCALE   = 1.5;              // 150 % — good balance of quality vs. size
-const JPEG_QUALITY   = 0.78;            // JPEG compression (0–1)
+const RENDER_SCALE   = 1.5;
+const JPEG_QUALITY   = 0.78;
 
-// Configure the PDF.js worker once at module load.
 if (typeof pdfjsLib !== 'undefined') {
     pdfjsLib.GlobalWorkerOptions.workerSrc =
         'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
@@ -51,8 +49,6 @@ export async function renderPDFPages(file) {
         await page.render({ canvasContext: ctx, viewport }).promise;
 
         images.push(canvas.toDataURL('image/jpeg', JPEG_QUALITY));
-
-        // Release page resources after rendering
         page.cleanup();
     }
 

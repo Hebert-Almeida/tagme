@@ -4,17 +4,14 @@ import { sanitizeText } from '../js/security.js';
 import { pulseChip, bindCursorTargets } from '../js/ui.js';
 
 // ── TagSelector ───────────────────────────────────────────────────────────
-// Renders semantic tag blocks (groups) with individual toggleable chips.
-// Manages its own selection Set and exposes it via getSelectedTags().
+// Renders AI-generated tag blocks as toggleable chips. Manages its own
+// selection Set and exposes the current selection via getSelectedTags().
 export class TagSelector {
-    #blocksContainer;  // HTMLElement — the tag-blocks div
-    #previewContainer; // HTMLElement — the selected-tags-preview div
-    #countEl;          // HTMLElement — badge showing count
+    #blocksContainer;
+    #previewContainer;
+    #countEl;
     #selected = new Set();
 
-    // @param blocksContainer  - element to render the block groups into
-    // @param previewContainer - element to render selected tag pills into
-    // @param countEl          - element to update with selection count
     constructor(blocksContainer, previewContainer, countEl) {
         this.#blocksContainer  = blocksContainer;
         this.#previewContainer = previewContainer;
@@ -23,8 +20,6 @@ export class TagSelector {
 
     // ── Public API ────────────────────────────────────────────────────────
 
-    // Populate the selector with AI-generated tag blocks.
-    // @param tagBlocks - Array<{ name: string, tags: string[] }>
     init(tagBlocks) {
         this.#selected.clear();
         this.#blocksContainer.innerHTML = '';
@@ -38,7 +33,6 @@ export class TagSelector {
 
         this.#blocksContainer.appendChild(fragment);
 
-        // Animate blocks in with GSAP stagger
         const blocks = this.#blocksContainer.querySelectorAll('.tag-block');
         gsap.fromTo(Array.from(blocks),
             { opacity: 0, y: 20 },
@@ -49,12 +43,10 @@ export class TagSelector {
         bindCursorTargets();
     }
 
-    // Return array of currently selected tag strings.
     getSelectedTags() {
         return [...this.#selected];
     }
 
-    // Return the count of selected tags.
     get count() { return this.#selected.size; }
 
     // ── Private ───────────────────────────────────────────────────────────
@@ -64,7 +56,6 @@ export class TagSelector {
         blockEl.className = 'tag-block';
         blockEl.dataset.block = String(blockIdx);
 
-        // ── Block header ───────────────────────────────────────────────
         const header = document.createElement('div');
         header.className = 'tag-block__header';
 
@@ -84,7 +75,6 @@ export class TagSelector {
         header.appendChild(toggleBtn);
         blockEl.appendChild(header);
 
-        // ── Chips container ────────────────────────────────────────────
         const chips = document.createElement('div');
         chips.className = 'tag-block__chips';
         chips.setAttribute('role', 'group');
@@ -109,12 +99,10 @@ export class TagSelector {
         chip.setAttribute('aria-checked', 'false');
         chip.setAttribute('aria-label', clean);
 
-        // Check indicator (●/✓)
         const check = document.createElement('span');
         check.className = 'chip-check';
         check.setAttribute('aria-hidden', 'true');
 
-        // Label text
         const label = document.createElement('span');
         label.className = 'chip-label';
         label.textContent = clean;
@@ -153,11 +141,12 @@ export class TagSelector {
     }
 
     _toggleBlock(tags, blockEl, toggleBtn) {
-        const allSelected = tags.every(t => this.#selected.has(t));
+        const sanitized = tags.map(t => sanitizeText(t));
+        const allSelected = sanitized.every(t => this.#selected.has(t));
 
         if (allSelected) {
             // Deselect all in this block
-            tags.forEach(t => this.#selected.delete(t));
+            sanitized.forEach(t => this.#selected.delete(t));
             blockEl.querySelectorAll('.tag-chip').forEach(chip => {
                 chip.classList.remove('selected');
                 chip.setAttribute('aria-checked', 'false');
@@ -167,7 +156,7 @@ export class TagSelector {
                 `Selecionar todas as tags de ${blockEl.querySelector('.tag-block__name').textContent}`);
         } else {
             // Select all in this block
-            tags.forEach(t => this.#selected.add(sanitizeText(t)));
+            sanitized.forEach(t => this.#selected.add(t));
             blockEl.querySelectorAll('.tag-chip').forEach(chip => {
                 chip.classList.add('selected');
                 chip.setAttribute('aria-checked', 'true');
@@ -207,7 +196,6 @@ export class TagSelector {
                 const pill = document.createElement('span');
                 pill.className = 'preview-tag';
                 pill.setAttribute('role', 'listitem');
-                // SECURITY: textContent
                 pill.textContent = sanitizeText(tag);
                 fragment.appendChild(pill);
             });

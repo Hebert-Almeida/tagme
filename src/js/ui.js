@@ -2,15 +2,11 @@
 
 import { sanitizeText } from './security.js';
 
-// NOTE: gsap and DOMPurify are loaded as global scripts in index.html
-// and are accessible here as window.gsap etc.
-
 // ── Cursor ───────────────────────────────────────────────────────────────
 export function initCursor() {
     const cursor = document.getElementById('cursor');
     if (!cursor) return;
 
-    // Only activate for real pointer devices (not touch-only)
     if (!window.matchMedia('(pointer: fine)').matches) {
         cursor.style.display = 'none';
         return;
@@ -24,7 +20,6 @@ export function initCursor() {
     document.addEventListener('mouseleave', () => { cursor.style.opacity = '0'; });
     document.addEventListener('mouseenter', () => { cursor.style.opacity = '1'; });
 
-    // Re-bindable: call this after new interactive elements are added to the DOM
     bindCursorTargets();
 }
 
@@ -36,7 +31,6 @@ export function bindCursorTargets() {
         'a, button, .article-card, .tag-chip, .source-btn, .pagination-nav button'
     );
     interactives.forEach(el => {
-        // Guard: avoid double-binding
         if (el.dataset.cursorBound) return;
         el.dataset.cursorBound = '1';
         el.addEventListener('mouseenter', () => cursor.classList.add('expanded'));
@@ -44,9 +38,7 @@ export function bindCursorTargets() {
     });
 }
 
-// ── Skeleton screens ─────────────────────────────────────────────────────
-// Renders placeholder UI elements while real content loads.
-// type: 'article' | 'tag' | 'text'
+// ── Skeleton Screens ─────────────────────────────────────────────────────
 export function showSkeleton(container, count = 5, type = 'article') {
     container.innerHTML = '';
     const fragment = document.createDocumentFragment();
@@ -85,8 +77,7 @@ export function showSkeleton(container, count = 5, type = 'article') {
     container.appendChild(fragment);
 }
 
-// ── Toast notifications ──────────────────────────────────────────────────
-// type: 'info' | 'success' | 'error' | 'warning'
+// ── Toast Notifications ──────────────────────────────────────────────────
 export function showToast(message, type = 'info', duration = 4500) {
     const container = document.getElementById('toast-container');
     if (!container) return;
@@ -122,9 +113,8 @@ export function showToast(message, type = 'info', duration = 4500) {
     }, duration);
 }
 
-// ── Inline error helpers ─────────────────────────────────────────────────
+// ── Inline Error Helpers ─────────────────────────────────────────────────
 export function showInlineError(el, message) {
-    // SECURITY: textContent, never innerHTML
     el.textContent = sanitizeText(message);
     el.hidden = false;
     gsap.fromTo(el, { opacity: 0, y: -4 }, { opacity: 1, y: 0, duration: 0.22 });
@@ -135,7 +125,7 @@ export function hideInlineError(el) {
     el.textContent = '';
 }
 
-// ── Button loading state ─────────────────────────────────────────────────
+// ── Button Loading State ─────────────────────────────────────────────────
 export function setLoading(btn, isLoading, loadingText = 'Aguarde…') {
     if (isLoading) {
         btn.dataset.origText = btn.textContent;
@@ -152,16 +142,14 @@ export function setLoading(btn, isLoading, loadingText = 'Aguarde…') {
     }
 }
 
-// ── View transitions ─────────────────────────────────────────────────────
-// Slides outEl away, slides inEl in from the given direction.
-// direction: 'forward' | 'back'
+// ── View Transitions ─────────────────────────────────────────────────────
+// Slides outEl away and brings inEl in from the given direction.
 export function transitionViews(outEl, inEl, direction = 'forward') {
     return new Promise(resolve => {
         const outX  = direction === 'forward' ? '-55%' : '55%';
         const inXFrom = direction === 'forward' ? '55%' : '-55%';
 
         if (!outEl) {
-            // First view — no outgoing element
             inEl.hidden = false;
             _animateViewIn(inEl, resolve);
             return;
@@ -185,7 +173,6 @@ export function transitionViews(outEl, inEl, direction = 'forward') {
     });
 }
 
-// Stagger-animates child elements when a view enters the screen
 function _animateViewIn(viewEl, callback) {
     const targets = viewEl.querySelectorAll(
         '.s-tag, .s-title, .s-body, .connect-form, ' +
@@ -205,7 +192,7 @@ function _animateViewIn(viewEl, callback) {
     }
 }
 
-// ── Card stagger entrance ────────────────────────────────────────────────
+// ── Card Stagger Entrance ────────────────────────────────────────────────
 export function animateCards(cards) {
     gsap.fromTo(Array.from(cards),
         { opacity: 0, y: 20 },
@@ -213,7 +200,7 @@ export function animateCards(cards) {
     );
 }
 
-// ── Tag chip micro-interaction ────────────────────────────────────────────
+// ── Tag Chip Micro-interaction ────────────────────────────────────────────
 export function pulseChip(chip) {
     gsap.timeline()
         .to(chip, { scale: 0.88, duration: 0.1, ease: 'power2.in' })
@@ -222,7 +209,7 @@ export function pulseChip(chip) {
     chip.addEventListener('animationend', () => chip.classList.remove('pulse'), { once: true });
 }
 
-// ── Export celebration ────────────────────────────────────────────────────
+// ── Export Celebration ────────────────────────────────────────────────────
 export function celebrateExport(container) {
     const icon  = container.querySelector('.export-success__icon');
     const title = container.querySelector('.export-success__title');
@@ -251,7 +238,7 @@ export function celebrateExport(container) {
     }
 }
 
-// ── Step trail ────────────────────────────────────────────────────────────
+// ── Step Trail ────────────────────────────────────────────────────────────
 const STEP_LABELS = ['Conectar', 'Biblioteca', 'Artigo', 'Tags', 'Resumo'];
 
 export function updateStepTrail(activeIndex) {
@@ -288,7 +275,7 @@ export function updateStepTrail(activeIndex) {
     trail.appendChild(fragment);
 }
 
-// ── Debounce utility ──────────────────────────────────────────────────────
+// ── Debounce ─────────────────────────────────────────────────────────────
 export function debounce(fn, ms) {
     let timer;
     return function (...args) {
@@ -297,7 +284,7 @@ export function debounce(fn, ms) {
     };
 }
 
-// ── Day / Night theme toggle ──────────────────────────────────────────────
+// ── Day / Night Theme Toggle ─────────────────────────────────────────────
 const THEME_KEY = 'tagme-theme';
 
 export function initTheme() {
@@ -305,7 +292,7 @@ export function initTheme() {
     if (stored === 'light' || stored === 'dark') {
         document.documentElement.setAttribute('data-theme', stored);
     }
-    // If no stored preference, CSS media query handles it automatically.
+    // No stored value → CSS prefers-color-scheme handles it automatically.
 
     document.querySelectorAll('.btn-theme').forEach(btn => {
         btn.addEventListener('click', toggleTheme);
@@ -315,7 +302,6 @@ export function initTheme() {
 export function toggleTheme() {
     const html = document.documentElement;
     const current = html.getAttribute('data-theme');
-    // Determine effective current theme (accounting for system preference)
     const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     const isDark = current === 'dark' || (!current && systemDark);
     const next = isDark ? 'light' : 'dark';
