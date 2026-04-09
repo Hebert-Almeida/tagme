@@ -23,11 +23,13 @@ const state = {
     library: {
         items: [],
         total: 0,
-        page: 0,            // 0-indexed
+        page: 0,
         perPage: 20,
         collections: [],
         searchTerm: '',
         collectionFilter: '',
+        sort: 'dateAdded',
+        direction: 'desc',
     },
     article: null,          // selected Zotero item | null
     doiMeta: null,          // CrossRef metadata | null
@@ -62,11 +64,15 @@ const el = {
     btnConnect:   $('btn-connect'),
 
     // Library
-    inpSearch:      $('inp-search'),
-    selCollection:  $('sel-collection'),
-    libraryCount:   $('library-count'),
+    inpSearch:        $('inp-search'),
+    selCollection:    $('sel-collection'),
+    selSort:          $('sel-sort'),
+    selDirection:     $('sel-direction'),
+    btnToggleFilters: $('btn-toggle-filters'),
+    filterPanelBody:  $('filter-panel-body'),
+    libraryCount:     $('library-count'),
     articlesContainer: $('articles-container'),
-    paginationNav:  $('pagination-nav'),
+    paginationNav:    $('pagination-nav'),
 
     // Article
     articleDetail:   $('article-detail'),
@@ -110,7 +116,7 @@ let tagSelector;
 let summaryPanel;
 
 // ── Navigation ────────────────────────────────────────────────────────────
-function navigateTo(viewName) {
+function navigateTo(viewName, { fromPopstate = false } = {}) {
     const outName = state.view;
     if (outName === viewName) return;
 
@@ -125,6 +131,11 @@ function navigateTo(viewName) {
     updateStepTrail(inIdx);
 
     el.btnBack.hidden = inIdx === 0;
+
+    // Push browser history so the back button navigates between views
+    if (!fromPopstate) {
+        history.pushState({ view: viewName }, '', null);
+    }
 
     transitionViews(outEl, inEl, dir).then(() => {
         inEl.scrollTop = 0;
@@ -215,15 +226,24 @@ function setupLibraryView() {
 
     el.inpSearch.addEventListener('input', debounce(handleSearch, 320));
     el.selCollection.addEventListener('change', handleSearch);
+    el.selSort.addEventListener('change', handleSearch);
+    el.selDirection.addEventListener('change', handleSearch);
+
+    // Mobile: toggle filter panel visibility
+    el.btnToggleFilters.addEventListener('click', () => {
+        const open = el.filterPanelBody.classList.toggle('open');
+        el.btnToggleFilters.setAttribute('aria-expanded', String(open));
+    });
 }
 
 async function loadLibrary() {
     articleList.showLoading();
 
     try {
+        const { sort, direction } = state.library;
         const [collectionsResult, itemsResult] = await Promise.allSettled([
             state.client.fetchCollections(),
-            state.client.fetchItems(0, state.library.perPage),
+            state.client.fetchItems(0, state.library.perPage, { sort, direction }),
         ]);
 
         if (collectionsResult.status === 'fulfilled') {
@@ -254,45 +274,38 @@ async function loadLibrary() {
     }
 }
 
+let _searchController = null;
+
 async function handleSearch() {
     const term       = sanitizeText(el.inpSearch.value);
     const collection = sanitizeText(el.selCollection.value);
+    const sort       = el.selSort.value;
+    const direction  = el.selDirection.value;
 
     state.library.searchTerm       = term;
     state.library.collectionFilter = collection;
+    state.library.sort             = sort;
+    state.library.direction        = direction;
     state.library.page = 0;
+
+    _searchController?.abort();
+    _searchController = new AbortController();
+    const { signal } = _searchController;
 
     articleList.showLoading();
 
     try {
         const { items, total } = await state.client.searchItems(
-            term, collection, 0, state.library.perPage
+            term, collection, 0, state.library.perPage, { signal, sort, direction }
         );
         state.library.items = items;
         state.library.total = total;
         articleList.render(items, total, 0);
     } catch (err) {
+        if (err.name === 'AbortError') return;
         if (err.message.includes('Limite')) showRateWarning(true);
-        // Fallback: client-side filter on already-loaded items
-        _clientSideFilter(term, collection);
+        showToast('Erro ao buscar artigos. Tente novamente.', 'error');
     }
-}
-
-// Client-side filter on already-loaded items (fallback when API search fails)
-function _clientSideFilter(term, collection) {
-    const lower = term.toLowerCase();
-    const filtered = state.library.items.filter(item => {
-        const d = item.data || {};
-        const titleMatch  = (d.title || '').toLowerCase().includes(lower);
-        const authorMatch = (d.creators || []).some(c =>
-            `${c.firstName ?? ''} ${c.lastName ?? ''}`.toLowerCase().includes(lower)
-        );
-        const yearMatch   = (d.date || '').includes(lower);
-        const colMatch    = !collection || (d.collections || []).includes(collection);
-        return (titleMatch || authorMatch || yearMatch) && colMatch;
-    });
-
-    articleList.render(filtered, filtered.length, 0);
 }
 
 function _populateCollectionFilter(collections) {
@@ -327,12 +340,12 @@ async function handlePageChange(newPage) {
 
     try {
         const start = newPage * state.library.perPage;
-        const { searchTerm, collectionFilter, perPage } = state.library;
+        const { searchTerm, collectionFilter, perPage, sort, direction } = state.library;
         const hasFilter = searchTerm || collectionFilter;
 
         const { items, total } = hasFilter
-            ? await state.client.searchItems(searchTerm, collectionFilter, start, perPage)
-            : await state.client.fetchItems(start, perPage);
+            ? await state.client.searchItems(searchTerm, collectionFilter, start, perPage, { sort, direction })
+            : await state.client.fetchItems(start, perPage, { sort, direction });
 
         state.library.items = items;
         state.library.total = total;
@@ -712,9 +725,15 @@ function handleBack() {
     const idx = VIEW_INDEX[state.view] ?? 0;
     if (idx === 0) return;
 
-    const prevView = VIEWS[idx - 1];
-    navigateTo(prevView);
+    // Use browser history so popstate handles the actual navigation
+    history.back();
 }
+
+// Browser back/forward button support
+window.addEventListener('popstate', (e) => {
+    const targetView = e.state?.view ?? 'connect';
+    navigateTo(targetView, { fromPopstate: true });
+});
 
 // ── Session Cleanup ───────────────────────────────────────────────────────
 // Wipe API credentials from memory when the user navigates away or closes the tab.
@@ -746,6 +765,9 @@ function init() {
     // Set initial step trail
     updateStepTrail(0);
     el.btnBack.hidden = true;
+
+    // Seed browser history with the initial view
+    history.replaceState({ view: 'connect' }, '', null);
 
     // Animate initial view in
     const firstTargets = el.connect.querySelectorAll('.s-tag, .s-title, .s-body, .connect-form');

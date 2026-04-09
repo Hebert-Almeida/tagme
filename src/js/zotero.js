@@ -49,15 +49,17 @@ export class ZoteroClient {
         }
     }
 
-    async #get(path) {
+    async #get(path, signal) {
         this.#checkRate();
         let res;
         try {
             res = await fetch(`${ZOTERO_BASE}${path}`, {
                 headers: this.#headers(),
                 mode: 'cors',
+                signal,
             });
-        } catch {
+        } catch (err) {
+            if (err.name === 'AbortError') throw err;
             throw new Error(
                 'Não foi possível contactar a API do Zotero. ' +
                 'Verifique sua conexão com a internet.'
@@ -79,13 +81,16 @@ export class ZoteroClient {
         return true;
     }
 
-    // Fetches a page of journal articles, sorted by date descending.
-    async fetchItems(start = 0, limit = 20) {
-        const path = `/users/${this.#userId}/items?` +
-            `itemType=journalArticle` +
+    // Fetches a page of library items. sort/direction map directly to Zotero API params.
+    async fetchItems(start = 0, limit = 20, { sort = 'dateAdded', direction = 'desc' } = {}) {
+        const safeSort = ['dateAdded','dateModified','date','creator','title'].includes(sort) ? sort : 'dateAdded';
+        const safeDir  = direction === 'asc' ? 'asc' : 'desc';
+
+        const path = `/users/${this.#userId}/items/top?` +
+            `itemType=-note` +
             `&start=${start}` +
             `&limit=${Math.min(limit, 50)}` +
-            `&sort=date&direction=desc`;
+            `&sort=${safeSort}&direction=${safeDir}`;
 
         const res = await this.#get(path);
         if (!res.ok) throw new Error(`Erro ao carregar artigos (${res.status}).`);
@@ -108,15 +113,18 @@ export class ZoteroClient {
         return Array.isArray(data) ? data : [];
     }
 
-    // Searches items by query term and/or collection key.
-    async searchItems(term = '', collection = '', start = 0, limit = 20) {
-        let path = `/users/${this.#userId}/items?itemType=journalArticle` +
-            `&start=${start}&limit=${Math.min(limit, 50)}&sort=date&direction=desc`;
+    // Searches items by query term, collection, and sort order.
+    async searchItems(term = '', collection = '', start = 0, limit = 20, { signal, sort = 'dateAdded', direction = 'desc' } = {}) {
+        const safeSort = ['dateAdded','dateModified','date','creator','title'].includes(sort) ? sort : 'dateAdded';
+        const safeDir  = direction === 'asc' ? 'asc' : 'desc';
 
-        if (term.trim()) path += `&q=${encodeURIComponent(term.trim())}`;
+        let path = `/users/${this.#userId}/items/top?itemType=-note` +
+            `&start=${start}&limit=${Math.min(limit, 50)}&sort=${safeSort}&direction=${safeDir}`;
+
+        if (term.trim()) path += `&q=${encodeURIComponent(term.trim())}&qmode=everything`;
         if (collection.trim()) path += `&collectionKey=${encodeURIComponent(collection.trim())}`;
 
-        const res = await this.#get(path);
+        const res = await this.#get(path, signal);
         if (!res.ok) throw new Error(`Erro na busca (${res.status}).`);
 
         const total = parseInt(res.headers.get('Total-Results') ?? '0', 10);

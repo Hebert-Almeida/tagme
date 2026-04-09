@@ -48,12 +48,6 @@
         <!-- ── VIEW 0: CONNECT ── -->
         <section class="view" id="view-connect" data-view="connect" role="region" aria-label="Conectar ao Zotero">
             <div class="view-inner view-inner--connect">
-                <button id="btn-theme-connect" class="btn-theme btn-theme--connect" aria-label="Alternar tema claro/escuro" title="Alternar tema">
-                    <svg class="icon-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79z"/></svg>
-                    <svg class="icon-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-                    <span class="btn-theme__label icon-moon">Tema escuro</span>
-                    <span class="btn-theme__label icon-sun">Tema claro</span>
-                </button>
                 <span class="s-tag">Passo 1 de 5</span>
                 <h1 class="s-title">Conecte sua biblioteca <em>Zotero</em></h1>
                 <p class="s-body">Cole sua chave de API do Zotero e seu User ID para acessarmos sua biblioteca.
@@ -105,10 +99,15 @@
                     </button>
                 </form>
 
-                <p class="cred-save-hint">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                    Guarde sua API Key e User ID em um arquivo de texto no seu computador — você precisará deles toda vez que abrir o TagMe.
-                </p>
+                <aside class="cred-save-hint" role="note" aria-label="Dica sobre credenciais">
+                    <span class="cred-save-hint__icon" aria-hidden="true">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    </span>
+                    <span class="cred-save-hint__body">
+                        <span class="cred-save-hint__label">Dica</span>
+                        <span class="cred-save-hint__text">Guarde sua API Key e User ID em um arquivo de texto no seu computador — você precisará deles toda vez que abrir o TagMe.</span>
+                    </span>
+                </aside>
             </div>
         </section>
 
@@ -118,28 +117,71 @@
                 <span class="s-tag">Passo 2 de 5</span>
                 <h2 class="s-title">Escolha um <em>artigo</em></h2>
 
-                <div class="library-toolbar">
-                    <label for="inp-search" class="sr-only">Buscar artigos</label>
-                    <div class="search-wrap">
-                        <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none"
-                            stroke="currentColor" stroke-width="2" aria-hidden="true">
-                            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-                        </svg>
-                        <input type="search" id="inp-search"
-                            placeholder="Buscar por título, autor ou ano…"
-                            autocomplete="off">
+                <div class="library-layout">
+                    <!-- Sidebar filters -->
+                    <aside class="filter-panel" id="filter-panel" aria-label="Filtros de artigos">
+                        <button class="filter-panel__toggle" id="btn-toggle-filters" aria-expanded="false" aria-controls="filter-panel-body">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+                            </svg>
+                            Filtros
+                            <svg class="filter-panel__chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                                <polyline points="6 9 12 15 18 9"/>
+                            </svg>
+                        </button>
+
+                        <div class="filter-panel__body" id="filter-panel-body">
+                            <div class="filter-group">
+                                <label for="inp-search" class="filter-label">Busca</label>
+                                <div class="search-wrap">
+                                    <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none"
+                                        stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+                                    </svg>
+                                    <input type="search" id="inp-search"
+                                        placeholder="Título, autor, ano…"
+                                        autocomplete="off">
+                                </div>
+                            </div>
+
+                            <div class="filter-group">
+                                <label for="sel-sort" class="filter-label">Ordenar por</label>
+                                <select id="sel-sort" aria-label="Ordenar artigos por">
+                                    <option value="dateAdded">Últimos adicionados</option>
+                                    <option value="dateModified">Últimos modificados</option>
+                                    <option value="date">Ano de publicação</option>
+                                    <option value="creator">Autor</option>
+                                    <option value="title">Título do artigo</option>
+                                </select>
+                            </div>
+
+                            <div class="filter-group">
+                                <label for="sel-direction" class="filter-label">Direção</label>
+                                <select id="sel-direction" aria-label="Direção da ordenação">
+                                    <option value="desc">Decrescente (Z→A / Novo→Antigo)</option>
+                                    <option value="asc">Crescente (A→Z / Antigo→Novo)</option>
+                                </select>
+                            </div>
+
+                            <div class="filter-group">
+                                <label for="sel-collection" class="filter-label">Coleção</label>
+                                <select id="sel-collection" aria-label="Filtrar por coleção">
+                                    <option value="">Todas as coleções</option>
+                                </select>
+                            </div>
+                        </div>
+                    </aside>
+
+                    <!-- Main article list -->
+                    <div class="library-main">
+                        <span id="library-count" class="library-count" aria-live="polite" aria-atomic="true"></span>
+
+                        <div id="articles-container" class="articles-container"
+                            role="list" aria-label="Lista de artigos" aria-live="polite"></div>
+
+                        <nav id="pagination-nav" class="pagination-nav" aria-label="Paginação de artigos" hidden></nav>
                     </div>
-                    <label for="sel-collection" class="sr-only">Filtrar por coleção</label>
-                    <select id="sel-collection" aria-label="Filtrar por coleção">
-                        <option value="">Todas as coleções</option>
-                    </select>
-                    <span id="library-count" class="library-count" aria-live="polite" aria-atomic="true"></span>
                 </div>
-
-                <div id="articles-container" class="articles-container"
-                    role="list" aria-label="Lista de artigos" aria-live="polite"></div>
-
-                <nav id="pagination-nav" class="pagination-nav" aria-label="Paginação de artigos" hidden></nav>
             </div>
         </section>
 
