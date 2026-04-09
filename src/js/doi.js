@@ -25,11 +25,10 @@ export async function fetchDOIMetadata(doi) {
         throw new Error(`Limite de requisições ao CrossRef atingido. Aguarde ${secs}s.`);
     }
 
-    // Encode the DOI and use ?select= to fetch only needed fields.
+    // Encode the DOI.
     // This also keeps the response well under the 512 KB cap in readSafeJSON.
     const encoded = encodeURIComponent(doi.trim());
-    const fields  = 'abstract,title,author,issued,published-print,published-online,container-title,DOI';
-    const url = `${CROSSREF_BASE}/${encoded}?select=${fields}&mailto=tagme-app@users.noreply`;
+    const url = `${CROSSREF_BASE}/${encoded}`;
 
     let res;
     try {

@@ -563,6 +563,10 @@ select option {
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
 }
+.cred-save-hint > svg {
+    flex-shrink: 0;
+    margin-top: 1px;
+}
 
 /* ── LIBRARY TOOLBAR ── */
 .library-toolbar {
