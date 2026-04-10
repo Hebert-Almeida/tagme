@@ -126,16 +126,22 @@ export function hideInlineError(el) {
 }
 
 // ── Button Loading State ─────────────────────────────────────────────────
+// Preserves child elements (icons, structured spans) by snapshotting innerHTML.
+const _btnSnapshots = new WeakMap();
+
 export function setLoading(btn, isLoading, loadingText = 'Aguarde…') {
     if (isLoading) {
-        btn.dataset.origText = btn.textContent;
+        if (!_btnSnapshots.has(btn)) _btnSnapshots.set(btn, btn.innerHTML);
         btn.textContent = loadingText;
         btn.disabled = true;
         btn.classList.add('loading');
         btn.setAttribute('aria-busy', 'true');
     } else {
-        btn.textContent = btn.dataset.origText ?? btn.textContent;
-        delete btn.dataset.origText;
+        const snapshot = _btnSnapshots.get(btn);
+        if (snapshot != null) {
+            btn.innerHTML = snapshot;
+            _btnSnapshots.delete(btn);
+        }
         btn.disabled = false;
         btn.classList.remove('loading');
         btn.removeAttribute('aria-busy');

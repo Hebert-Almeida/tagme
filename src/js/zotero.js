@@ -118,11 +118,15 @@ export class ZoteroClient {
         const safeSort = ['dateAdded','dateModified','date','creator','title'].includes(sort) ? sort : 'dateAdded';
         const safeDir  = direction === 'asc' ? 'asc' : 'desc';
 
-        let path = `/users/${this.#userId}/items/top?itemType=-note` +
+        const safeCollection = collection.trim().replace(/[^A-Z0-9]/gi, '');
+        const base = safeCollection
+            ? `/users/${this.#userId}/collections/${safeCollection}/items/top`
+            : `/users/${this.#userId}/items/top`;
+
+        let path = `${base}?itemType=-note` +
             `&start=${start}&limit=${Math.min(limit, 50)}&sort=${safeSort}&direction=${safeDir}`;
 
         if (term.trim()) path += `&q=${encodeURIComponent(term.trim())}&qmode=everything`;
-        if (collection.trim()) path += `&collectionKey=${encodeURIComponent(collection.trim())}`;
 
         const res = await this.#get(path, signal);
         if (!res.ok) throw new Error(`Erro na busca (${res.status}).`);
