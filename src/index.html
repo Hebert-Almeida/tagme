@@ -13,7 +13,7 @@
                  font-src https://fonts.gstatic.com;
                  img-src 'self' data: https:;
                  worker-src https://cdn.jsdelivr.net;
-                 connect-src https://api.zotero.org https://api.crossref.org https://*.puter.com wss://*.puter.com https://cdn.jsdelivr.net ws://127.0.0.1:5500;">
+                 connect-src https://api.zotero.org https://api.crossref.org https://api.openalex.org https://arxiv.org https://export.arxiv.org https://*.puter.com wss://*.puter.com https://cdn.jsdelivr.net ws://127.0.0.1:5500;">
     <title>TagMe</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -237,13 +237,41 @@
                             </span>
                             <span class="source-btn__label">Carregar PDF</span>
                             <span class="source-btn__desc" id="pdf-hint">
-                                IA lê o PDF diretamente por visão
+                                Selecione ou arraste o PDF
+                            </span>
+                        </button>
+                        <button id="btn-doi-pdf" class="source-btn" aria-describedby="doi-pdf-hint">
+                            <span class="source-btn__icon" aria-hidden="true">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                                    stroke="currentColor" stroke-width="1.8">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                    <polyline points="7 10 12 15 17 10"/>
+                                    <line x1="12" y1="15" x2="12" y2="3"/>
+                                </svg>
+                            </span>
+                            <span class="source-btn__label">PDF via DOI</span>
+                            <span class="source-btn__desc" id="doi-pdf-hint">
+                                Busca PDF de acesso aberto pelo DOI
                             </span>
                         </button>
                     </div>
                     <!-- Hidden file input triggered by the PDF button -->
-                    <input type="file" id="inp-pdf" accept=".pdf" hidden
+                    <input type="file" id="inp-pdf" accept="application/pdf,.pdf" hidden
                         aria-label="Selecionar arquivo PDF para extração de texto">
+
+                    <!-- Drop zone overlay — shown during drag -->
+                    <div id="pdf-dropzone" class="pdf-dropzone" aria-hidden="true">
+                        <div class="pdf-dropzone__inner">
+                            <svg width="42" height="42" viewBox="0 0 24 24" fill="none"
+                                stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="17 8 12 3 7 8"/>
+                                <line x1="12" y1="3" x2="12" y2="15"/>
+                            </svg>
+                            <p class="pdf-dropzone__title">Solte o PDF para analisar</p>
+                            <p class="pdf-dropzone__hint">Apenas arquivos .pdf de até 50&nbsp;MB</p>
+                        </div>
+                    </div>
 
                     <div id="manual-input-area" class="manual-input-area" hidden>
                         <label for="inp-article-text" class="field-label">Texto do artigo</label>
@@ -261,9 +289,6 @@
                         <p id="preview-label" class="preview-label">Texto obtido:</p>
                         <div id="text-preview-content" class="text-preview-content"
                             role="region" aria-label="Prévia do texto extraído"></div>
-                        <button id="btn-edit-text" class="btn-ghost btn-sm">
-                            Editar texto manualmente
-                        </button>
                     </div>
 
                     <p id="article-err" class="inline-error" role="alert" hidden></p>

@@ -2,10 +2,10 @@
 
 // ── Imports ───────────────────────────────────────────────────────────────
 import { ZoteroClient }       from './zotero.js';
-import { fetchDOIMetadata }   from './doi.js';
-import { renderPDFPages }     from './pdf.js';
+import { fetchDOIMetadata, fetchOpenAccessPDF } from './doi.js';
+import { renderPDFPages, fetchAndRenderPDF }     from './pdf.js';
 import { generateAnalysis, generateAnalysisFromImages } from './ai.js';
-import { validateApiKey, validateUserId, sanitizeText } from './security.js';
+import { validateApiKey, validateUserId, sanitizeText, isSafeHttpsUrl } from './security.js';
 import {
     initCursor, bindCursorTargets, showToast, showInlineError, hideInlineError,
     setLoading, transitionViews, updateStepTrail, debounce, initTheme,
@@ -79,14 +79,15 @@ const el = {
     btnDoi:          $('btn-doi'),
     btnManual:       $('btn-manual'),
     btnPdf:          $('btn-pdf'),
+    btnDoiPdf:       $('btn-doi-pdf'),
     inpPdf:          $('inp-pdf'),
+    pdfDropzone:     $('pdf-dropzone'),
     manualInputArea: $('manual-input-area'),
     inpArticleText:  $('inp-article-text'),
     charCount:       $('char-count'),
     textPreviewArea: $('text-preview-area'),
     previewLabel:    $('preview-label'),
     textPreviewContent: $('text-preview-content'),
-    btnEditText:     $('btn-edit-text'),
     articleErr:      $('article-err'),
     btnAnalyze:      $('btn-analyze'),
 
@@ -357,12 +358,19 @@ async function handlePageChange(newPage) {
 }
 
 // ── STEP 3: ARTICLE SELECTION & ANALYSIS ─────────────────────────────────
+
+// Source-input buttons (DOI / manual / PDF / PDF-via-DOI). Kept as an array so
+// .active toggling and reset loops iterate once instead of repeating per-button.
+let SOURCE_BTNS;
+
 function setupArticleView() {
+    SOURCE_BTNS = [el.btnDoi, el.btnManual, el.btnPdf, el.btnDoiPdf];
+
     el.btnDoi.addEventListener('click', handleDOIFetch);
     el.btnManual.addEventListener('click', handleManualInput);
     el.btnPdf.addEventListener('click', () => el.inpPdf.click());
+    el.btnDoiPdf.addEventListener('click', handleDOIPDFFetch);
     el.inpPdf.addEventListener('change', handlePDFLoad);
-    el.btnEditText.addEventListener('click', handleEditText);
     el.btnAnalyze.addEventListener('click', handleAnalyze);
 
     el.inpArticleText.addEventListener('input', () => {
@@ -373,34 +381,117 @@ function setupArticleView() {
             el.btnAnalyze.hidden = false;
         }
     });
+
+    setupPDFDragDrop();
 }
 
-function handleArticleSelect(item) {
-    state.article      = item;
+// ── Drag-and-drop PDF upload ──────────────────────────────────────────────
+function setupPDFDragDrop() {
+    // dataTransfer.types carries 'Files' only when actual files are being
+    // dragged — rules out text/link drags so we don't flash the dropzone.
+    const isFileDrag = (e) =>
+        Array.from(e.dataTransfer?.types || []).includes('Files');
+
+    // Block the browser's default PDF navigation on drops outside the article
+    // view. Inside the view, the listeners below take over.
+    ['dragover', 'drop'].forEach(evt => {
+        window.addEventListener(evt, (e) => {
+            if (!el.article.contains(e.target)) e.preventDefault();
+        });
+    });
+
+    let dragDepth = 0;
+
+    const showZone = () => {
+        el.pdfDropzone.classList.add('active');
+        el.pdfDropzone.setAttribute('aria-hidden', 'false');
+    };
+    const hideZone = () => {
+        dragDepth = 0;
+        el.pdfDropzone.classList.remove('active');
+        el.pdfDropzone.setAttribute('aria-hidden', 'true');
+    };
+
+    const isActive = (e) => state.view === 'article' && isFileDrag(e);
+
+    el.article.addEventListener('dragenter', (e) => {
+        if (!isActive(e)) return;
+        e.preventDefault();
+        dragDepth++;
+        showZone();
+    });
+
+    el.article.addEventListener('dragover', (e) => {
+        if (!isActive(e)) return;
+        e.preventDefault();
+        if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+    });
+
+    // Must mirror dragenter's file-drag guard, otherwise a non-file leave can
+    // decrement dragDepth below zero and hide the zone mid-drag.
+    el.article.addEventListener('dragleave', (e) => {
+        if (!isActive(e)) return;
+        dragDepth--;
+        if (dragDepth <= 0) hideZone();
+    });
+
+    el.article.addEventListener('drop', async (e) => {
+        if (!isActive(e)) return;
+        e.preventDefault();
+        hideZone();
+
+        const files = e.dataTransfer?.files;
+        if (!files || files.length === 0) return;
+
+        let pdfFile = null;
+        for (const f of files) {
+            const nameOk = typeof f.name === 'string' && f.name.toLowerCase().endsWith('.pdf');
+            const typeOk = !f.type || f.type === 'application/pdf';
+            if (nameOk && typeOk) { pdfFile = f; break; }
+        }
+
+        if (!pdfFile) {
+            showInlineError(el.articleErr, 'Arraste um arquivo .pdf válido.');
+            return;
+        }
+
+        await _processPDFFile(pdfFile);
+    });
+}
+
+function _resetSourceState() {
     state.extractedText = '';
     state.pdfImages     = null;
     state.doiMeta       = null;
 
-    el.textPreviewArea.hidden  = true;
-    el.manualInputArea.hidden  = true;
-    el.btnAnalyze.hidden       = true;
-    el.inpArticleText.value    = '';
-    el.inpPdf.value            = '';
-    el.charCount.textContent   = '0';
+    el.inpArticleText.value     = '';
+    el.charCount.textContent    = '0';
+    el.inpPdf.value             = '';
+
+    el.manualInputArea.hidden   = true;
+    el.textPreviewArea.hidden   = true;
+    el.btnAnalyze.hidden        = true;
+
+    el.previewLabel.textContent     = '';
+    el.textPreviewContent.innerHTML = '';
+
+    for (const btn of SOURCE_BTNS) btn.classList.remove('active');
+
     hideInlineError(el.articleErr);
-    el.btnDoi.classList.remove('active');
-    el.btnManual.classList.remove('active');
-    el.btnPdf.classList.remove('active');
+}
+
+function handleArticleSelect(item) {
+    state.article = item;
+    _resetSourceState();
 
     _renderArticleDetail(item);
 
     const hasDoi = !!item.data?.DOI;
     el.btnDoi.disabled = !hasDoi;
-    if (!hasDoi) {
-        el.btnDoi.title = 'Este artigo não possui DOI registrado no Zotero.';
-    } else {
-        el.btnDoi.title = '';
-    }
+    el.btnDoiPdf.disabled = !hasDoi;
+    const noDoiMsg = 'Este artigo não possui DOI registrado no Zotero.';
+    el.btnDoi.title    = hasDoi ? '' : noDoiMsg;
+    el.btnDoiPdf.title = hasDoi ? '' : noDoiMsg;
 
     navigateTo('article');
 }
@@ -409,60 +500,126 @@ function _renderArticleDetail(item) {
     const data = item.data || {};
     el.articleDetail.innerHTML = '';
 
-    const titleEl = document.createElement('p');
-    titleEl.className = 'article-detail__title';
-    titleEl.textContent = sanitizeText(data.title) || '(sem título)';
+    const titleText = sanitizeText(data.title) || '(sem título)';
+    const titleEl = document.createElement('button');
+    titleEl.type = 'button';
+    titleEl.className = 'article-detail__title article-detail__title--copy';
+    titleEl.title = 'Clique para copiar o título';
+    titleEl.textContent = titleText;
+    if (data.title) {
+        titleEl.addEventListener('click', () => _copyToClipboard(String(data.title), 'Título'));
+    } else {
+        titleEl.disabled = true;
+    }
     el.articleDetail.appendChild(titleEl);
 
     const metaEl = document.createElement('div');
     metaEl.className = 'article-detail__meta';
 
+    const year    = data.date ? new Date(String(data.date)).getFullYear() : null;
+    const authors = _formatAuthors(data.creators);
+
     const metas = [
-        { label: 'Autores', value: _formatAuthors(data.creators) },
-        { label: 'Ano', value: data.date ? new Date(String(data.date)).getFullYear() : null },
-        { label: 'Periódico', value: data.publicationTitle },
-        { label: 'DOI', value: data.DOI, cls: 'article-detail__doi' },
-        { label: 'Volume', value: data.volume },
-        { label: 'Número', value: data.issue },
-        { label: 'Páginas', value: data.pages },
+        { label: 'Autores',   value: authors?.display, copy: authors?.full },
+        { label: 'Ano',       value: year,             copy: year != null ? String(year) : '' },
+        { label: 'Periódico', value: data.publicationTitle, copy: data.publicationTitle },
+        { label: 'DOI',       value: data.DOI,         copy: data.DOI, href: _doiUrl(data.DOI) },
+        { label: 'Volume',    value: data.volume,      copy: data.volume },
+        { label: 'Número',    value: data.issue,       copy: data.issue },
+        { label: 'Páginas',   value: data.pages,       copy: data.pages },
     ];
 
-    metas.forEach(({ label, value, cls }) => {
-        if (!value) return;
-        const item = document.createElement('span');
-        item.className = 'article-detail__meta-item' + (cls ? ` ${cls}` : '');
+    metas.forEach(({ label, value, copy, href }) => {
+        if (value == null || value === '') return;
+
+        const safeValue = sanitizeText(String(value));
+        const copyValue = (copy == null || copy === '') ? safeValue : String(copy);
+
+        if (href) {
+            const a = document.createElement('a');
+            a.className = 'article-detail__meta-item article-detail__meta-item--link';
+            a.href = href;
+            a.target = '_blank';
+            a.rel = 'noopener noreferrer';
+            a.title = `Abrir ${label} em nova aba`;
+
+            const lbl = document.createElement('strong');
+            lbl.textContent = `${label}: `;
+            a.appendChild(lbl);
+            a.appendChild(document.createTextNode(safeValue));
+            metaEl.appendChild(a);
+            return;
+        }
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'article-detail__meta-item article-detail__meta-item--copy';
+        btn.title = `Clique para copiar ${label.toLowerCase()}`;
 
         const lbl = document.createElement('strong');
         lbl.textContent = `${label}: `;
-        item.appendChild(lbl);
-
-        const val = document.createTextNode(sanitizeText(String(value)));
-        item.appendChild(val);
-        metaEl.appendChild(item);
+        btn.appendChild(lbl);
+        btn.appendChild(document.createTextNode(safeValue));
+        btn.addEventListener('click', () => _copyToClipboard(copyValue, label));
+        metaEl.appendChild(btn);
     });
 
     el.articleDetail.appendChild(metaEl);
 }
 
+// Per-segment encodeURIComponent so `?`, `#`, whitespace in the DOI can't
+// alter the URL shape, while `/` inside the DOI is preserved.
+function _doiUrl(doi) {
+    if (typeof doi !== 'string' || !doi.trim()) return null;
+    const encoded = doi.trim().split('/').map(encodeURIComponent).join('/');
+    const built = `https://doi.org/${encoded}`;
+    return isSafeHttpsUrl(built) ? built : null;
+}
+
+async function _copyToClipboard(value, label) {
+    if (typeof value !== 'string' || value.length === 0) {
+        showToast(`Nada para copiar em ${label.toLowerCase()}.`, 'info');
+        return;
+    }
+    try {
+        if (navigator.clipboard?.writeText) {
+            await navigator.clipboard.writeText(value);
+        } else {
+            const ta = document.createElement('textarea');
+            ta.value = value;
+            ta.setAttribute('readonly', '');
+            ta.style.position = 'absolute';
+            ta.style.left = '-9999px';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+        }
+        showToast(`${label} copiado!`, 'success');
+    } catch {
+        showToast(`Não foi possível copiar ${label.toLowerCase()}.`, 'error');
+    }
+}
+
+// Returns { display, full } — display is capped to 4 names with "et al.",
+// full joins all names (used when the value is copied to the clipboard).
+// Returns null when there are no creators.
 function _formatAuthors(creators) {
     if (!Array.isArray(creators) || creators.length === 0) return null;
-    const names = creators
-        .slice(0, 4)
+    const allNames = creators
         .map(c => sanitizeText([c.firstName, c.lastName].filter(Boolean).join(' ')))
         .filter(Boolean);
-    return names.join(', ') + (creators.length > 4 ? ' et al.' : '');
+    if (allNames.length === 0) return null;
+    const display = allNames.slice(0, 4).join(', ') + (allNames.length > 4 ? ' et al.' : '');
+    return { display, full: allNames.join(', ') };
 }
 
 async function handleDOIFetch() {
     const doi = state.article?.data?.DOI;
     if (!doi) return;
 
+    _resetSourceState();
     el.btnDoi.classList.add('active');
-    el.btnManual.classList.remove('active');
-    el.manualInputArea.hidden = true;
-    el.textPreviewArea.hidden = true;
-    el.btnAnalyze.hidden = true;
-    hideInlineError(el.articleErr);
 
     setLoading(el.btnDoi, true, 'Buscando…');
 
@@ -491,14 +648,12 @@ async function handleDOIFetch() {
 async function handlePDFLoad() {
     const file = el.inpPdf.files?.[0];
     if (!file) return;
+    await _processPDFFile(file);
+}
 
+async function _processPDFFile(file) {
+    _resetSourceState();
     el.btnPdf.classList.add('active');
-    el.btnDoi.classList.remove('active');
-    el.btnManual.classList.remove('active');
-    el.manualInputArea.hidden = true;
-    el.textPreviewArea.hidden = true;
-    el.btnAnalyze.hidden = true;
-    hideInlineError(el.articleErr);
 
     setLoading(el.btnPdf, true, 'Renderizando…');
 
@@ -516,6 +671,98 @@ async function handlePDFLoad() {
     } finally {
         setLoading(el.btnPdf, false);
     }
+}
+
+// PDF-via-DOI: if OpenAlex returns a CORS-safe host (arXiv today), fetch and
+// render inline. Otherwise, open the link in a new tab and ask the user to
+// drag-drop the downloaded file back.
+async function handleDOIPDFFetch() {
+    const doi = state.article?.data?.DOI;
+    if (!doi) {
+        showInlineError(el.articleErr, 'Este artigo não possui DOI registrado.');
+        return;
+    }
+
+    _resetSourceState();
+    el.btnDoiPdf.classList.add('active');
+
+    setLoading(el.btnDoiPdf, true, 'Procurando…');
+
+    try {
+        const { pdfUrl, landingUrl, isDirectFetchable } = await fetchOpenAccessPDF(doi);
+
+        if (isDirectFetchable && pdfUrl) {
+            setLoading(el.btnDoiPdf, true, 'Baixando PDF…');
+            try {
+                const images = await fetchAndRenderPDF(pdfUrl);
+                state.pdfImages    = images;
+                state.extractedText = '';
+                _showPDFPreview(images[0], _shortNameFromUrl(pdfUrl), images.length);
+                showToast('PDF baixado automaticamente!', 'success');
+                return;
+            } catch (fetchErr) {
+                console.warn('Direct PDF fetch failed, falling back to new tab:', fetchErr);
+            }
+        }
+
+        const openTarget = pdfUrl || landingUrl;
+        if (!openTarget) {
+            throw new Error('Nenhum link de PDF disponível.');
+        }
+
+        _openExternal(openTarget);
+        _showDOIPDFHint(openTarget);
+        showToast('PDF aberto em nova aba. Baixe e arraste aqui.', 'info');
+    } catch (err) {
+        showInlineError(el.articleErr, err.message);
+        el.btnDoiPdf.classList.remove('active');
+    } finally {
+        setLoading(el.btnDoiPdf, false);
+    }
+}
+
+function _openExternal(url) {
+    if (!isSafeHttpsUrl(url)) return;
+    window.open(url, '_blank', 'noopener,noreferrer');
+}
+
+function _shortNameFromUrl(url) {
+    try {
+        const path = new URL(url).pathname;
+        const last = path.split('/').filter(Boolean).pop() || 'artigo.pdf';
+        return sanitizeText(decodeURIComponent(last).slice(0, 80));
+    } catch {
+        return 'artigo.pdf';
+    }
+}
+
+function _showDOIPDFHint(url) {
+    el.previewLabel.textContent = 'PDF encontrado:';
+    el.textPreviewContent.innerHTML = '';
+
+    const wrap = document.createElement('div');
+    wrap.className = 'doi-pdf-hint';
+
+    const p1 = document.createElement('p');
+    p1.textContent = 'Abrimos o PDF em uma nova aba. Baixe o arquivo e arraste-o para esta página para analisar.';
+    wrap.appendChild(p1);
+
+    const link = document.createElement('a');
+    link.className = 'doi-pdf-hint__link';
+    link.textContent = _shortNameFromUrl(url);
+    if (isSafeHttpsUrl(url)) link.href = url;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    wrap.appendChild(link);
+
+    el.textPreviewContent.appendChild(wrap);
+    el.textPreviewArea.hidden = false;
+    el.btnAnalyze.hidden = true; // nothing to analyze yet
+
+    gsap.fromTo(el.textPreviewArea,
+        { opacity: 0, y: 10 },
+        { opacity: 1, y: 0, duration: 0.35, ease: 'power3.out' }
+    );
 }
 
 function _showPDFPreview(firstPageDataUrl, fileName, totalPages) {
@@ -554,30 +801,10 @@ function _showPDFPreview(firstPageDataUrl, fileName, totalPages) {
 }
 
 function handleManualInput() {
+    _resetSourceState();
     el.btnManual.classList.add('active');
-    el.btnDoi.classList.remove('active');
-    el.textPreviewArea.hidden = true;
     el.manualInputArea.hidden = false;
     el.inpArticleText.focus();
-    hideInlineError(el.articleErr);
-
-    if (el.inpArticleText.value.length >= 100) {
-        el.btnAnalyze.hidden = false;
-    }
-}
-
-function handleEditText() {
-    // Switching to manual text — discard any loaded PDF images
-    state.pdfImages = null;
-    el.btnPdf.classList.remove('active');
-
-    el.textPreviewArea.hidden = true;
-    el.manualInputArea.hidden = false;
-    el.inpArticleText.value = state.extractedText;
-    el.charCount.textContent = String(state.extractedText.length);
-    el.btnAnalyze.hidden = state.extractedText.length < 100;
-    el.inpArticleText.focus();
-    el.btnManual.classList.add('active');
 }
 
 function _showTextPreview(text, label = 'Texto obtido:') {

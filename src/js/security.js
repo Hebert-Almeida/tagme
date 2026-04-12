@@ -80,6 +80,23 @@ export class RateLimiter {
     }
 }
 
+// Rejects anything that isn't plain https:// — no javascript:, data:, http:, etc.
+export function isSafeHttpsUrl(str) {
+    try {
+        return new URL(str).protocol === 'https:';
+    } catch {
+        return false;
+    }
+}
+
+export function extractHost(str) {
+    try {
+        return new URL(str).hostname.toLowerCase();
+    } catch {
+        return null;
+    }
+}
+
 // Zotero User ID: numeric, 1-12 digits.
 export function validateUserId(id) {
     return typeof id === 'string' && /^\d{1,12}$/.test(id.trim());

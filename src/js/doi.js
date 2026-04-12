@@ -1,12 +1,26 @@
 'use strict';
 
-import { readSafeJSON, RateLimiter } from './security.js';
+import { readSafeJSON, RateLimiter, isSafeHttpsUrl, extractHost } from './security.js';
 
 // CrossRef public API — polite pool via mailto header
 const CROSSREF_BASE = 'https://api.crossref.org/works';
 
+// OpenAlex public API — used to find open-access PDFs for a DOI
+const OPENALEX_BASE = 'https://api.openalex.org/works/doi:';
+
 // 10 req/min — respects CrossRef's polite-pool guidelines
 const _limiter = new RateLimiter(10, 60_000);
+
+// Separate limiter for OpenAlex (100k/day public pool — be conservative client-side)
+const _oaLimiter = new RateLimiter(10, 60_000);
+
+// Only attempt in-browser fetch from these known CORS-friendly hosts.
+// Everything else falls back to opening the landing page in a new tab
+// so the user can download the PDF and drag-drop it into the app.
+const CORS_SAFE_PDF_HOSTS = new Set([
+    'arxiv.org',
+    'export.arxiv.org',
+]);
 
 /**
  * Fetch metadata for a DOI from CrossRef.
@@ -103,4 +117,80 @@ export async function fetchDOIMetadata(doi) {
         journal,
         doi: doi.trim(),
     };
+}
+
+// Does NOT download the PDF — the caller decides whether to auto-fetch
+// (only safe for CORS-friendly hosts) or open the link in a new tab.
+export async function fetchOpenAccessPDF(doi) {
+    if (!doi || typeof doi !== 'string') {
+        throw new Error('DOI não fornecido.');
+    }
+
+    if (!_oaLimiter.check()) {
+        const secs = Math.ceil(_oaLimiter.msUntilAvailable() / 1000);
+        throw new Error(`Limite de requisições ao OpenAlex atingido. Aguarde ${secs}s.`);
+    }
+
+    const encoded = encodeURIComponent(doi.trim());
+    const url = `${OPENALEX_BASE}${encoded}`;
+
+    let res;
+    try {
+        res = await fetch(url, { mode: 'cors' });
+    } catch {
+        throw new Error(
+            'Não foi possível contactar o OpenAlex. ' +
+            'Verifique sua conexão ou tente carregar um PDF manualmente.'
+        );
+    }
+
+    if (res.status === 404) {
+        throw new Error('DOI não encontrado no OpenAlex. Carregue o PDF manualmente.');
+    }
+    if (res.status === 429) {
+        throw new Error('OpenAlex: muitas requisições. Aguarde alguns segundos.');
+    }
+    if (!res.ok) {
+        throw new Error(`Erro ao consultar OpenAlex (código ${res.status}).`);
+    }
+
+    const data = await readSafeJSON(res);
+
+    // Prefer best_oa_location → primary_location → any OA location → oa_url fallback.
+    const candidates = [];
+    if (data?.best_oa_location) candidates.push(data.best_oa_location);
+    if (data?.primary_location?.is_oa) candidates.push(data.primary_location);
+    if (Array.isArray(data?.locations)) {
+        for (const loc of data.locations) {
+            if (loc?.is_oa) candidates.push(loc);
+        }
+    }
+
+    let pdfUrl = null;
+    let landingUrl = null;
+    for (const loc of candidates) {
+        if (!pdfUrl && typeof loc?.pdf_url === 'string' && isSafeHttpsUrl(loc.pdf_url)) {
+            pdfUrl = loc.pdf_url;
+        }
+        if (!landingUrl && typeof loc?.landing_page_url === 'string' && isSafeHttpsUrl(loc.landing_page_url)) {
+            landingUrl = loc.landing_page_url;
+        }
+        if (pdfUrl && landingUrl) break;
+    }
+
+    if (!pdfUrl && typeof data?.open_access?.oa_url === 'string' && isSafeHttpsUrl(data.open_access.oa_url)) {
+        pdfUrl = data.open_access.oa_url;
+    }
+
+    if (!pdfUrl && !landingUrl) {
+        throw new Error(
+            'Nenhum PDF de acesso aberto disponível para este DOI. ' +
+            'Tente carregar um PDF manualmente.'
+        );
+    }
+
+    const host = pdfUrl ? extractHost(pdfUrl) : null;
+    const isDirectFetchable = !!(host && CORS_SAFE_PDF_HOSTS.has(host));
+
+    return { pdfUrl, landingUrl, isDirectFetchable, host };
 }

@@ -16,7 +16,7 @@
     --border-mid: #2a2a2a;
     --text: #f5f5f5;
     --text-mid: #b0b0b0;
-    --text-muted: #777;
+    --text-muted: #d0d0d0;
     --text-dim: #444;
     --header-h: 52px;
     --section-pad: clamp(1.5rem, 4vw, 4rem);
@@ -38,7 +38,7 @@
     --border-mid: #cccbc8;
     --text: #1a1a1a;
     --text-mid: #4a4a4a;
-    --text-muted: #6b6b6b;
+    --text-muted: #3a3a3a;
     --text-dim: #aaa;
 }
 
@@ -55,7 +55,7 @@
         --border-mid: #cccbc8;
         --text: #1a1a1a;
         --text-mid: #4a4a4a;
-        --text-muted: #6b6b6b;
+        --text-muted: #3a3a3a;
         --text-dim: #aaa;
     }
 }
