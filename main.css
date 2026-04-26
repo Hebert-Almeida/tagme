@@ -460,6 +460,33 @@ button {
     transform: scale(0.97);
 }
 
+.s-cta[disabled],
+.s-cta[aria-disabled="true"] {
+    cursor: not-allowed;
+    opacity: .55;
+    background: transparent;
+    color: var(--accent);
+}
+.s-cta[disabled]:hover,
+.s-cta[aria-disabled="true"]:hover {
+    background: transparent;
+    color: var(--accent);
+    transform: none;
+}
+
+.cta-soon {
+    display: inline-block;
+    margin-left: .35em;
+    padding: 1px 6px;
+    border: 1px solid currentColor;
+    border-radius: 999px;
+    font-size: .68em;
+    font-weight: 600;
+    letter-spacing: .02em;
+    opacity: .8;
+    vertical-align: baseline;
+}
+
 /* ── How-To Grid (page 2) ────────────────────────────────────────────────── */
 .how-grid {
     display: grid;
