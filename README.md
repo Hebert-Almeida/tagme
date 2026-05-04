@@ -92,3 +92,8 @@ npx serve .
 # or
 python -m http.server
 ```
+
+
+## Repository Registration
+
+[![DOI](https://zenodo.org/badge/1077681961.svg)](https://doi.org/10.5281/zenodo.20030972)
