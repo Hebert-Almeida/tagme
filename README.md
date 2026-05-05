@@ -96,4 +96,4 @@ python -m http.server
 
 ## Repository Registration
 
-[![DOI](https://zenodo.org/badge/1077681961.svg)](https://doi.org/10.5281/zenodo.20030972)
+[![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.20030972-1D79B7?style=flat&labelColor=555555)](https://doi.org/10.5281/zenodo.20030972)
