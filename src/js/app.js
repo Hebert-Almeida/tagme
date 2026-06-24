@@ -7,8 +7,9 @@ import { renderPDFPages, fetchAndRenderPDF }     from './pdf.js';
 import { generateAnalysis, generateAnalysisFromImages } from './ai.js';
 import { validateApiKey, validateUserId, sanitizeText, isSafeHttpsUrl } from './security.js';
 import {
-    initCursor, bindCursorTargets, showToast, showInlineError, hideInlineError,
+    initCursor, showToast, showInlineError, hideInlineError,
     setLoading, transitionViews, updateStepTrail, debounce, initTheme,
+    safeFromTo,
 } from './ui.js';
 import { ArticleList }   from '../components/articleList.js';
 import { TagSelector }   from '../components/tagSelector.js';
@@ -140,7 +141,6 @@ function navigateTo(viewName, { fromPopstate = false } = {}) {
 
     transitionViews(outEl, inEl, dir).then(() => {
         inEl.scrollTop = 0;
-        bindCursorTargets();
     });
 }
 
@@ -195,12 +195,15 @@ async function handleConnect(e) {
 
     setLoading(el.btnConnect, true, 'Conectando…');
 
+    // Wipe credentials from any previous session up-front, so a failed verify
+    // on the new key doesn't leave the old key alive in memory.
+    state.client?.destroy();
+    state.client = null;
+
     try {
         const client = new ZoteroClient(apiKey, userId);
         await client.verifyConnection();
 
-        // Wipe credentials from any previous session before storing the new client
-        state.client?.destroy();
         state.client = client;
 
         showToast('Biblioteca conectada com sucesso!', 'success');
@@ -299,11 +302,13 @@ async function handleSearch() {
         const { items, total } = await state.client.searchItems(
             term, collection, 0, state.library.perPage, { signal, sort, direction }
         );
+        // Guard against a stale response winning the race against a newer search
+        if (signal.aborted) return;
         state.library.items = items;
         state.library.total = total;
         articleList.render(items, total, 0);
     } catch (err) {
-        if (err.name === 'AbortError') return;
+        if (err.name === 'AbortError' || signal.aborted) return;
         if (err.message.includes('Limite')) showRateWarning(true);
         showToast('Erro ao buscar artigos. Tente novamente.', 'error');
     }
@@ -759,7 +764,7 @@ function _showDOIPDFHint(url) {
     el.textPreviewArea.hidden = false;
     el.btnAnalyze.hidden = true; // nothing to analyze yet
 
-    gsap.fromTo(el.textPreviewArea,
+    safeFromTo(el.textPreviewArea,
         { opacity: 0, y: 10 },
         { opacity: 1, y: 0, duration: 0.35, ease: 'power3.out' }
     );
@@ -794,7 +799,7 @@ function _showPDFPreview(firstPageDataUrl, fileName, totalPages) {
     el.textPreviewArea.hidden = false;
     el.btnAnalyze.hidden = false;
 
-    gsap.fromTo([el.textPreviewArea, el.btnAnalyze],
+    safeFromTo([el.textPreviewArea, el.btnAnalyze],
         { opacity: 0, y: 10 },
         { opacity: 1, y: 0, duration: 0.35, ease: 'power3.out', stagger: 0.06 }
     );
@@ -813,7 +818,7 @@ function _showTextPreview(text, label = 'Texto obtido:') {
     el.textPreviewArea.hidden = false;
     el.btnAnalyze.hidden = false;
 
-    gsap.fromTo([el.textPreviewArea, el.btnAnalyze],
+    safeFromTo([el.textPreviewArea, el.btnAnalyze],
         { opacity: 0, y: 10 },
         { opacity: 1, y: 0, duration: 0.35, ease: 'power3.out', stagger: 0.06 }
     );
@@ -875,6 +880,9 @@ function setupTagsView() {
 }
 
 function _renderTagsView(analysis) {
+    // Clear any selections carried over from a previous article
+    state.selectedTags = [];
+
     el.themeDisplay.textContent = sanitizeText(analysis.theme);
     tagSelector.init(analysis.tagBlocks);
 
@@ -903,17 +911,14 @@ function setupSummaryView() {
 }
 
 function _renderSummaryView() {
-    summaryPanel.showLoading();
     hideInlineError(el.summaryErr);
 
-    setTimeout(() => {
-        const summary = state.analysis?.summary;
-        if (summary && summary.trim().length > 20) {
-            summaryPanel.render(summary);
-        } else {
-            summaryPanel.renderEmpty('Não foi possível extrair frases representativas. Você ainda pode exportar as tags.');
-        }
-    }, 400);
+    const summary = state.analysis?.summary;
+    if (summary && summary.trim().length > 20) {
+        summaryPanel.render(summary);
+    } else {
+        summaryPanel.renderEmpty('Não foi possível extrair frases representativas. Você ainda pode exportar as tags.');
+    }
 }
 
 async function handleExport(includeSummary) {
@@ -971,17 +976,46 @@ window.addEventListener('pagehide', () => {
     state.client?.destroy();
 });
 
+// ── Global error reporting ────────────────────────────────────────────────
+// Surfaces uncaught errors to the user so the app never silently breaks.
+// Toast errors are throttled (1 per 1.5 s) to avoid flooding on cascading failures.
+let _lastErrorAt = 0;
+function _reportError(label, err) {
+    console.error(`[TagMe] ${label}:`, err);
+    const now = Date.now();
+    if (now - _lastErrorAt < 1500) return;
+    _lastErrorAt = now;
+    try {
+        showToast('Algo deu errado. Verifique o console ou recarregue a página.', 'error');
+    } catch { /* showToast can fail before toast container exists — ignore */ }
+}
+window.addEventListener('error', (e) => _reportError('uncaught error', e.error || e.message));
+window.addEventListener('unhandledrejection', (e) => _reportError('unhandled rejection', e.reason));
+
+// Renders a minimal fatal-error banner directly into the body when init() can't
+// even finish wiring up the UI (e.g. CDN blocked, DOM IDs renamed).
+function _showFatalError(err) {
+    console.error('[TagMe] fatal init error:', err);
+    const banner = document.createElement('div');
+    banner.setAttribute('role', 'alert');
+    banner.style.cssText = [
+        'position:fixed', 'inset:0', 'display:flex', 'align-items:center',
+        'justify-content:center', 'padding:2rem', 'background:#111', 'color:#f5f5f5',
+        'font-family:system-ui,sans-serif', 'z-index:99999', 'text-align:center',
+    ].join(';');
+    banner.textContent =
+        'Não foi possível iniciar o TagMe. Verifique sua conexão (uma dependência pode estar bloqueada) e recarregue a página.';
+    document.body.appendChild(banner);
+}
+
 // ── Init ──────────────────────────────────────────────────────────────────
 function init() {
     // Register GSAP ScrambleText plugin (loaded globally)
     if (typeof gsap !== 'undefined' && typeof ScrambleTextPlugin !== 'undefined') {
         gsap.registerPlugin(ScrambleTextPlugin);
     }
-
-    // Respect reduced motion
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-        gsap.globalTimeline.timeScale(20);
-    }
+    // NOTE: reduced-motion is handled at each animation callsite via the
+    // safeFromTo / safeTo helpers in ui.js — no global timeScale hack.
 
     // Init day/night theme (reads localStorage or system preference)
     initTheme();
@@ -998,7 +1032,7 @@ function init() {
 
     // Animate initial view in
     const firstTargets = el.connect.querySelectorAll('.s-tag, .s-title, .s-body, .connect-form');
-    gsap.fromTo(Array.from(firstTargets),
+    safeFromTo(Array.from(firstTargets),
         { opacity: 0, y: 20 },
         { opacity: 1, y: 0, duration: 0.5, ease: 'power3.out', stagger: 0.07, delay: 0.1 }
     );
@@ -1013,4 +1047,8 @@ function init() {
 }
 
 // Run after DOM is ready (module scripts are deferred)
-init();
+try {
+    init();
+} catch (err) {
+    _showFatalError(err);
+}

@@ -1,7 +1,7 @@
 'use strict';
 
 import { sanitizeText } from '../js/security.js';
-import { pulseChip, bindCursorTargets } from '../js/ui.js';
+import { pulseChip, safeFromTo } from '../js/ui.js';
 
 // ── TagSelector ───────────────────────────────────────────────────────────
 // Renders AI-generated tag blocks as toggleable chips. Manages its own
@@ -34,13 +34,12 @@ export class TagSelector {
         this.#blocksContainer.appendChild(fragment);
 
         const blocks = this.#blocksContainer.querySelectorAll('.tag-block');
-        gsap.fromTo(Array.from(blocks),
+        safeFromTo(Array.from(blocks),
             { opacity: 0, y: 20 },
             { opacity: 1, y: 0, duration: 0.38, ease: 'power3.out', stagger: 0.07 }
         );
 
         this._updatePreview();
-        bindCursorTargets();
     }
 
     getSelectedTags() {

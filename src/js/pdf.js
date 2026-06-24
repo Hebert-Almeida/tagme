@@ -1,25 +1,56 @@
-'use strict';
-
 // Client-side PDF renderer. Pages are drawn to canvas and converted to
 // JPEG data URLs for the AI vision API. No file content leaves the browser.
+//
+// PDF.js (~330 KB) is loaded lazily on first PDF action via _ensurePDFLib(),
+// keeping initial page load smaller for users who never touch a PDF.
 
 import { isSafeHttpsUrl } from './security.js';
 
 export const MAX_PDF_BYTES = 50 * 1024 * 1024; // 50 MB
-const MAX_PAGES      = 4;                       // first N pages sent for vision analysis
-const RENDER_SCALE   = 1.5;
-const JPEG_QUALITY   = 0.78;
+export const MAX_PAGES   = 4;        // First N pages sent to the AI (exposed for UI copy)
+const RENDER_SCALE       = 1.2;      // Lowered from 1.5 — vision API doesn't benefit above this
+const JPEG_QUALITY       = 0.7;      // Lowered from 0.78 — saves ~25 % payload, no visible drop
 
 // Magic bytes: %PDF-  (0x25 0x50 0x44 0x46 0x2D)
 const PDF_MAGIC = [0x25, 0x50, 0x44, 0x46, 0x2D];
 
-if (typeof pdfjsLib !== 'undefined') {
-    pdfjsLib.GlobalWorkerOptions.workerSrc =
-        'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+// ── Lazy PDF.js loader ────────────────────────────────────────────────────
+const PDFJS_VERSION = '3.11.174';
+const PDFJS_SCRIPT  = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/build/pdf.min.js`;
+const PDFJS_WORKER  = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/build/pdf.worker.min.js`;
+
+let _pdfLibPromise = null;
+function _ensurePDFLib() {
+    if (typeof pdfjsLib !== 'undefined') {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER;
+        return Promise.resolve();
+    }
+    if (_pdfLibPromise) return _pdfLibPromise;
+
+    _pdfLibPromise = new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = PDFJS_SCRIPT;
+        s.async = true;
+        s.onload = () => {
+            if (typeof pdfjsLib === 'undefined') {
+                reject(new Error('PDF.js carregou mas pdfjsLib não está disponível.'));
+                return;
+            }
+            pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER;
+            resolve();
+        };
+        s.onerror = () => {
+            _pdfLibPromise = null; // allow retry on transient failures
+            reject(new Error('Não foi possível baixar o PDF.js. Verifique sua conexão.'));
+        };
+        document.head.appendChild(s);
+    });
+    return _pdfLibPromise;
 }
 
 export async function renderPDFPages(file) {
     _validateFile(file);
+    await _ensurePDFLib();
     const arrayBuffer = await file.arrayBuffer();
     return _renderFromBuffer(arrayBuffer);
 }
@@ -37,9 +68,7 @@ export async function renderPDFFromBuffer(arrayBuffer) {
     if (!_hasPDFMagic(arrayBuffer)) {
         throw new Error('O arquivo não parece ser um PDF válido.');
     }
-    if (typeof pdfjsLib === 'undefined') {
-        throw new Error('PDF.js não carregado. Recarregue a página.');
-    }
+    await _ensurePDFLib();
     return _renderFromBuffer(arrayBuffer);
 }
 
@@ -109,7 +138,7 @@ async function _renderPage(pdf, pageNum) {
     const dataUrl = canvas.toDataURL('image/jpeg', JPEG_QUALITY);
 
     // Explicitly drop the canvas backing store — Safari/iOS hold onto it
-    // past GC, and 4 pages at 1.5× scale can linger as tens of MB.
+    // past GC, and 4 pages can linger as tens of MB.
     canvas.width = 0;
     canvas.height = 0;
     page.cleanup();
@@ -135,9 +164,6 @@ function _validateFile(file) {
     }
     if (file.size === 0) {
         throw new Error('O arquivo está vazio.');
-    }
-    if (typeof pdfjsLib === 'undefined') {
-        throw new Error('PDF.js não carregado. Recarregue a página.');
     }
 }
 

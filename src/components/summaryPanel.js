@@ -1,7 +1,7 @@
 'use strict';
 
 import { sanitizeText } from '../js/security.js';
-import { showSkeleton } from '../js/ui.js';
+import { showSkeleton, safeFromTo } from '../js/ui.js';
 
 // ── SummaryPanel ──────────────────────────────────────────────────────────
 // Editable textarea for the AI-generated summary. Users can tweak
@@ -55,7 +55,7 @@ export class SummaryPanel {
 
         this.#container.appendChild(wrapper);
 
-        gsap.fromTo(wrapper,
+        safeFromTo(wrapper,
             { opacity: 0, y: 14 },
             { opacity: 1, y: 0, duration: 0.4, ease: 'power3.out' }
         );

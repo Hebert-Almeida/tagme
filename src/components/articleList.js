@@ -1,7 +1,7 @@
 'use strict';
 
 import { sanitizeText } from '../js/security.js';
-import { showSkeleton, animateCards, bindCursorTargets } from '../js/ui.js';
+import { showSkeleton, animateCards } from '../js/ui.js';
 
 // ── ArticleList ───────────────────────────────────────────────────────────
 // Renders a paginated list of Zotero article cards.
@@ -76,7 +76,6 @@ export class ArticleList {
 
         this.#container.appendChild(fragment);
         animateCards(this.#container.querySelectorAll('.article-card'));
-        bindCursorTargets();
     }
 
     _buildCard(item) {
@@ -189,7 +188,6 @@ export class ArticleList {
         });
 
         this.#paginationEl.append(prevBtn, info, nextBtn);
-        bindCursorTargets();
     }
 
     _updateCount() {

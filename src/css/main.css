@@ -132,16 +132,19 @@ select { font-family: inherit; }
 }
 
 /* ── CURSOR ── */
+/* Position is driven by gsap.quickTo on x/y (transform) — never left/top.
+   xPercent/yPercent (-50/-50) are set once via JS to center the dot on the
+   pointer, since translate(-50%, -50%) can't coexist with GSAP x/y. */
 #cursor {
     position: fixed;
+    top: 0; left: 0;
     width: 10px; height: 10px;
     border-radius: 50%;
     background: var(--green);
     pointer-events: none;
     z-index: 99999;
-    transform: translate(-50%, -50%);
     transition: width .2s ease, height .2s ease, background .2s ease, opacity .2s ease;
-    will-change: left, top;
+    will-change: transform;
 }
 #cursor.expanded {
     width: 32px; height: 32px;

@@ -15,18 +15,33 @@ const total  = pages.length;
 let cur = 0, busy = false;
 
 // ── Custom Cursor ───────────────────────────────────────────────────────────
-// Follows the mouse on devices with a fine pointer (mouse/trackpad).
-// Interactive elements trigger an "expanded" state via hover events.
+// Driven by gsap.quickTo on transform (GPU-composited) — no inline left/top.
+// Hover-expansion uses event delegation so new DOM doesn't need rebinding.
 const cursorEl = document.getElementById('cursor');
-if (cursorEl && window.matchMedia('(pointer: fine)').matches) {
+const _prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+if (cursorEl && window.matchMedia('(pointer: fine)').matches && !_prefersReduced) {
+    gsap.set(cursorEl, { xPercent: -50, yPercent: -50 });
+    const xTo = gsap.quickTo(cursorEl, 'x', { duration: 0.15, ease: 'power3' });
+    const yTo = gsap.quickTo(cursorEl, 'y', { duration: 0.15, ease: 'power3' });
+
     document.addEventListener('mousemove', e => {
-        cursorEl.style.left = e.clientX + 'px';
-        cursorEl.style.top  = e.clientY + 'px';
+        xTo(e.clientX);
+        yTo(e.clientY);
     }, { passive: true });
 
-    document.querySelectorAll('a, button, .dot, .s-cta, .dev-social').forEach(el => {
-        el.addEventListener('mouseenter', () => cursorEl.classList.add('expanded'));
-        el.addEventListener('mouseleave', () => cursorEl.classList.remove('expanded'));
+    const CURSOR_SEL = 'a, button, .dot, .s-cta, .dev-social';
+    document.addEventListener('mouseover', e => {
+        const into = e.target.closest?.(CURSOR_SEL);
+        if (!into) return;
+        const from = e.relatedTarget?.closest?.(CURSOR_SEL);
+        if (into !== from) cursorEl.classList.add('expanded');
+    });
+    document.addEventListener('mouseout', e => {
+        const out = e.target.closest?.(CURSOR_SEL);
+        if (!out) return;
+        const to = e.relatedTarget?.closest?.(CURSOR_SEL);
+        if (out !== to) cursorEl.classList.remove('expanded');
     });
 
     document.addEventListener('mouseleave', () => { cursorEl.style.opacity = '0'; });

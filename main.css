@@ -108,21 +108,24 @@ button {
 }
 
 /* ── Custom Cursor ───────────────────────────────────────────────────────── */
+/* Position is driven by gsap.quickTo on x/y (transform). xPercent/yPercent
+   (-50/-50) are set once via JS to center the dot on the pointer. */
 #cursor {
     position: fixed;
+    top: 0;
+    left: 0;
     width: 10px;
     height: 10px;
     border-radius: 50%;
     background: var(--accent);
     pointer-events: none;
     z-index: 99999;
-    transform: translate(-50%, -50%);
     transition:
         width 0.2s ease,
         height 0.2s ease,
         background 0.2s ease,
         opacity 0.2s ease;
-    will-change: left, top;
+    will-change: transform;
 }
 
 #cursor.expanded {

@@ -1,7 +1,7 @@
 'use strict';
 
 import { sanitizeText } from '../js/security.js';
-import { celebrateExport, bindCursorTargets } from '../js/ui.js';
+import { celebrateExport, safeFromTo, safeTo } from '../js/ui.js';
 
 // ── ExportModal ───────────────────────────────────────────────────────────
 // Confirmation modal shown before writing tags/summary to Zotero.
@@ -34,12 +34,10 @@ export class ExportModal {
         };
         document.addEventListener('keydown', this._escHandler);
 
-        gsap.fromTo(modal,
+        safeFromTo(modal,
             { scale: 0.92, opacity: 0, y: 16 },
             { scale: 1, opacity: 1, y: 0, duration: 0.38, ease: 'back.out(1.5)' }
         );
-
-        bindCursorTargets();
     }
 
     showSuccess(tagCount) {
@@ -74,16 +72,17 @@ export class ExportModal {
 
         success.append(icon, title, line1, line2, closeBtn);
 
-        gsap.to(modal, {
+        const swap = () => {
+            modal.innerHTML = '';
+            modal.appendChild(success);
+            gsap.set(modal, { opacity: 1, scale: 1 });
+            celebrateExport(modal);
+            closeBtn.focus();
+        };
+
+        safeTo(modal, {
             opacity: 0, scale: 0.95, duration: 0.2, ease: 'power2.in',
-            onComplete: () => {
-                modal.innerHTML = '';
-                modal.appendChild(success);
-                gsap.set(modal, { opacity: 1, scale: 1 });
-                celebrateExport(modal);
-                closeBtn.focus();
-                bindCursorTargets();
-            }
+            onComplete: swap,
         });
     }
 
@@ -188,12 +187,23 @@ export class ExportModal {
     }
 
     _dismiss() {
+        // Cleanup the ESC listener up-front so a second ESC during the exit
+        // animation can't trigger _dismiss again on the same (in-flight) modal.
         this._cleanup();
-        gsap.to(this.#slot.querySelector('.export-modal'), {
+        const modalEl = this.#slot.querySelector('.export-modal');
+
+        const done = () => {
+            this.#slot.hidden = true;
+            this.#slot.innerHTML = '';
+            this.#onCancel?.();
+        };
+
+        if (!modalEl) { done(); return; }
+
+        safeTo(modalEl, {
             scale: 0.93, opacity: 0, duration: 0.22, ease: 'power2.in',
-            onComplete: () => this._close()
+            onComplete: done,
         });
-        this.#onCancel?.();
     }
 
     _close() {
